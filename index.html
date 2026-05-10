@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post Market Profits Scanner</title>
+<style>
+:root {
+  --bg: #07080d;
+  --surface: #0e1018;
+  --surface2: #13151f;
+  --border: #1c1f2e;
+  --border2: #252838;
+  --text: #dde1f0;
+  --muted: #4a4f6a;
+  --muted2: #6b7199;
+  --accent: #6c63f7;
+  --red: #f06e6e;
+  --red-dim: rgba(240,110,110,0.13);
+  --red-glow: rgba(240,110,110,0.2);
+  --amber: #f5c842;
+  --amber-dim: rgba(245,200,66,0.11);
+  --green: #3dd68c;
+  --green-dim: rgba(61,214,140,0.08);
+  --blue: #5ba3f5;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { min-height:100vh; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Tahoma, Geneva, sans-serif;
+  font-size: 15px;
+  padding: 16px;
+  background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(108,99,247,0.07) 0%, transparent 70%);
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border2);
+}
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-icon {
+  width:36px; height:36px;
+  background: linear-gradient(135deg, #1a1a2e, #4a3f8f);
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px; color:#fff;
+  box-shadow: 0 0 18px rgba(108,99,247,0.35);
+  letter-spacing:-1px;
+}
+.brand-text { line-height:1.2; }
+.brand-name { font-size:16px; font-weight:700; letter-spacing:0.02em; }
+.brand-sub { font-size:12px; color:var(--muted2); letter-spacing:0.03em; }
+.header-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.window-badge {
+  font-size:12px;
+  color:var(--muted2);
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:6px;
+  padding:5px 10px;
+}
+.window-badge span { color:var(--amber); font-weight:700; }
+#clock { font-size:14px; font-weight:700; color:var(--text); }
+.market-badge {
+  font-size:12px; font-weight:700;
+  letter-spacing:0.05em;
+  padding:4px 10px;
+  border-radius:5px;
+  text-transform:uppercase;
+}
+.market-badge.open { background:rgba(61,214,140,0.15); color:var(--green); border:1px solid rgba(61,214,140,0.3); }
+.market-badge.closed { background:rgba(240,110,110,0.13); color:var(--red); border:1px solid rgba(240,110,110,0.25); }
+.market-badge.after { background:rgba(108,99,247,0.15); color:#a89fff; border:1px solid rgba(108,99,247,0.3); }
+.market-badge.pre { background:rgba(245,200,66,0.12); color:var(--amber); border:1px solid rgba(245,200,66,0.3); }
+
+/* ── TRIGGER ALERT ── */
+.trigger-alert {
+  display:none;
+  background: rgba(108,99,247,0.12);
+  border:1px solid rgba(108,99,247,0.4);
+  border-radius:10px;
+  padding:12px 16px;
+  margin-bottom:14px;
+}
+.trigger-alert.show { display:block; }
+.trigger-alert.fired {
+  background: rgba(240,110,110,0.1);
+  border-color: rgba(240,110,110,0.4);
+  animation: alertpulse 2s ease-in-out infinite;
+}
+@keyframes alertpulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(240,110,110,0.15); }
+  50% { box-shadow: 0 0 16px 4px rgba(240,110,110,0.15); }
+}
+.trigger-title { font-size:13px; font-weight:700; margin-bottom:6px; letter-spacing:0.03em; }
+.trigger-title.purple { color:#a89fff; }
+.trigger-title.red { color:var(--red); }
+.trigger-list { list-style:none; }
+.trigger-list li {
+  font-size:14px; color:var(--text);
+  padding:4px 0;
+  display:flex; align-items:center; gap:8px;
+}
+.trigger-list li::before { content:'▶'; font-size:9px; color:var(--red); }
+.trade-tag {
+  background:rgba(108,99,247,0.2);
+  color:#a89fff;
+  border:1px solid rgba(108,99,247,0.35);
+  border-radius:4px;
+  padding:1px 8px;
+  font-size:12px; font-weight:700;
+}
+.friday-warn {
+  background: rgba(245,200,66,0.1);
+  border:1px solid rgba(245,200,66,0.3);
+  border-radius:8px;
+  padding:8px 14px;
+  font-size:13px;
+  color:var(--amber);
+  margin-bottom:14px;
+  display:none;
+}
+.friday-warn.show { display:block; }
+
+/* ── BLUEPRINT PANEL ── */
+.blueprint-panel {
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:12px 16px;
+  margin-bottom:14px;
+}
+.bp-title {
+  font-size:12px; font-weight:700;
+  color:var(--muted2);
+  text-transform:uppercase;
+  letter-spacing:0.07em;
+  margin-bottom:8px;
+}
+.bp-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.bp-item {
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:6px 12px;
+  font-size:13px;
+}
+.bp-label { color:var(--muted2); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px; }
+.bp-val { font-weight:700; color:var(--text); }
+
+/* ── SEASONALITY BAR ── */
+.season-panel {
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:12px 16px;
+  margin-bottom:14px;
+}
+.season-title { font-size:12px; font-weight:700; color:var(--muted2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px; }
+.season-grid { display:flex; gap:5px; align-items:flex-end; flex-wrap:wrap; }
+.season-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:32px; }
+.season-bar-wrap { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:60px; }
+.season-bar { width:100%; border-radius:3px 3px 0 0; min-height:3px; transition:height 0.5s ease; }
+.season-bar.best { background:linear-gradient(180deg,#3dd68c,#22a86a); }
+.season-bar.good { background:linear-gradient(180deg,#5ba3f5,#2d7dd2); }
+.season-bar.ok { background:linear-gradient(180deg,#f5c842,#d4a017); }
+.season-bar.weak { background:linear-gradient(180deg,#f06e6e,#c04040); }
+.season-month { font-size:10px; color:var(--muted2); font-weight:700; }
+.season-pct { font-size:10px; font-weight:700; }
+.season-pct.best { color:var(--green); }
+.season-pct.good { color:var(--blue); }
+.season-pct.ok { color:var(--amber); }
+.season-pct.weak { color:var(--red); }
+.current-month { background:rgba(108,99,247,0.15); border-radius:6px; padding:2px 0; }
+
+/* ── RULES CHIPS ── */
+.rules-bar {
+  display:flex; gap:8px; flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.rule-chip {
+  display:flex; align-items:center; gap:5px;
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:7px;
+  padding:5px 10px;
+  font-size:12px;
+  color:var(--muted2);
+}
+.rule-chip .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.rule-chip .dot.red { background:var(--red); }
+.rule-chip .dot.green { background:var(--green); }
+.rule-chip .dot.amber { background:var(--amber); }
+.rule-chip .dot.accent { background:var(--accent); }
+.rule-chip strong { color:var(--text); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--border2); margin-bottom:14px; }
+table { width:100%; border-collapse:collapse; }
+thead th {
+  background:var(--surface2);
+  font-size:12px; font-weight:700;
+  color:var(--muted2);
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  padding:10px 13px;
+  text-align:left;
+  border-bottom:1px solid var(--border2);
+  white-space:nowrap;
+}
+tbody tr { border-bottom:1px solid var(--border); transition:background 0.12s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--surface2); }
+tbody tr.triggered { background:rgba(240,110,110,0.07); }
+tbody tr.triggered:hover { background:rgba(240,110,110,0.12); }
+td { padding:10px 13px; vertical-align:middle; white-space:nowrap; }
+
+.sym { font-weight:700; font-size:15px; color:var(--text); }
+.sym-name { font-size:11px; color:var(--muted2); margin-top:1px; }
+.price-cell { font-weight:700; font-size:15px; }
+.chg-cell { font-size:14px; font-weight:600; }
+.chg-cell.neg { color:var(--red); }
+.chg-cell.pos { color:var(--green); }
+.chg-cell.flat { color:var(--muted2); }
+
+/* progress to -1% */
+.prog-wrap { display:flex; align-items:center; gap:8px; min-width:130px; }
+.prog-pct { font-size:13px; font-weight:700; min-width:36px; text-align:right; }
+.prog-pct.danger { color:var(--red); }
+.prog-pct.warn { color:var(--amber); }
+.prog-pct.mild { color:var(--blue); }
+.prog-pct.none { color:var(--muted); }
+.prog-track { flex:1; height:6px; background:var(--border2); border-radius:3px; overflow:hidden; min-width:70px; }
+.prog-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+.prog-fill.danger { background:linear-gradient(90deg,#f06e6e,#ff9999); box-shadow:0 0 6px rgba(240,110,110,0.5); }
+.prog-fill.warn { background:linear-gradient(90deg,#f5c842,#fde68a); }
+.prog-fill.mild { background:linear-gradient(90deg,#5ba3f5,#93c5fd); }
+.prog-fill.none { background:var(--border2); }
+
+.signal-cell { font-size:12px; }
+.signal-on { color:var(--red); font-weight:700; }
+.signal-watch { color:var(--amber); font-weight:600; }
+.signal-off { color:var(--muted); }
+
+.trig-badge {
+  display:inline-block;
+  background:var(--red-dim);
+  color:var(--red);
+  border:1px solid rgba(240,110,110,0.35);
+  border-radius:4px;
+  font-size:10px; font-weight:700;
+  padding:2px 6px;
+  letter-spacing:0.05em;
+  animation: pulse 1.8s ease-in-out infinite;
+  margin-left:6px;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow:0 0 0 0 var(--red-glow); }
+  50% { opacity:0.8; box-shadow:0 0 8px 2px var(--red-glow); }
+}
+
+.action-cell { font-size:12px; color:var(--muted2); }
+.action-cell.active { color:#a89fff; font-weight:700; }
+
+/* ── API BAR ── */
+.api-bar {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:10px 14px;
+  margin-bottom:14px;
+}
+.api-bar label { font-size:13px; color:var(--muted2); white-space:nowrap; }
+.api-bar input {
+  flex:1; min-width:180px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--text);
+  font-family:Tahoma,Geneva,sans-serif;
+  font-size:13px;
+  padding:5px 10px;
+  outline:none;
+}
+.api-bar input:focus { border-color:var(--accent); }
+.btn-scan {
+  background:linear-gradient(135deg,#4a3f8f,#6c63f7);
+  color:#fff; border:none; border-radius:6px;
+  font-family:Tahoma,Geneva,sans-serif;
+  font-size:13px; font-weight:700;
+  padding:6px 16px; cursor:pointer;
+  transition:opacity 0.15s;
+}
+.btn-scan:hover { opacity:0.85; }
+.api-status { font-size:12px; }
+.api-status.ok { color:var(--green); }
+.api-status.err { color:var(--red); }
+
+/* ── FOOTER ── */
+.footer {
+  display:flex; flex-wrap:wrap; gap:12px;
+  align-items:center; justify-content:space-between;
+}
+.legend { display:flex; gap:10px; flex-wrap:wrap; }
+.leg-item { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted2); }
+.leg-dot { width:8px; height:8px; border-radius:2px; }
+.leg-dot.d { background:var(--red); }
+.leg-dot.w { background:var(--amber); }
+.leg-dot.m { background:var(--blue); }
+.leg-dot.z { background:var(--border2); }
+.refresh-info { font-size:12px; color:var(--muted); }
+
+/* ── MOBILE ── */
+@media (max-width:640px) {
+  .table-wrap { display:none; }
+  .cards { display:flex; flex-direction:column; gap:8px; }
+  .card {
+    background:var(--surface); border:1px solid var(--border2);
+    border-radius:10px; padding:12px;
+  }
+  .card.triggered { border-color:rgba(240,110,110,0.4); background:rgba(240,110,110,0.06); }
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px; }
+  .card-sym { font-weight:700; font-size:17px; }
+  .card-name { font-size:11px; color:var(--muted2); }
+  .card-price { font-weight:700; font-size:15px; text-align:right; }
+  .card-chg { font-size:13px; }
+  .card-chg.neg { color:var(--red); }
+  .card-chg.pos { color:var(--green); }
+  .card-bar-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .card-pct { font-size:13px; font-weight:700; min-width:38px; }
+  .card-track { flex:1; height:6px; background:var(--border2); border-radius:3px; overflow:hidden; }
+  .card-fill { height:100%; border-radius:3px; }
+  .card-fill.danger { background:linear-gradient(90deg,#f06e6e,#ff9999); }
+  .card-fill.warn { background:linear-gradient(90deg,#f5c842,#fde68a); }
+  .card-fill.mild { background:linear-gradient(90deg,#5ba3f5,#93c5fd); }
+  .card-bottom { font-size:12px; color:var(--muted2); margin-top:4px; }
+  .card-bottom.active { color:#a89fff; font-weight:700; }
+}
+@media (min-width:641px) { .cards { display:none; } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="brand">
+    <div class="brand-icon">DT</div>
+    <div class="brand-text">
+      <div class="brand-name">Post Market Profits Scanner</div>
+      <div class="brand-sub">Monument Traders Alliance · Dark Ticker Profits</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="window-badge" id="windowBadge">⏰ Trade Window: <span>4:00–4:15 PM ET</span></div>
+    <div id="clock">--:--:-- --</div>
+    <div id="market-badge" class="market-badge closed">CLOSED</div>
+  </div>
+</div>
+
+<!-- API BAR -->
+<div class="api-bar">
+  <label>FINNHUB API KEY:</label>
+  <input type="text" id="apiKey" placeholder="Enter your Finnhub API key…" />
+  <button class="btn-scan" onclick="startScanner()">▶ SCAN</button>
+  <span class="api-status" id="apiStatus"></span>
+</div>
+
+<!-- FRIDAY WARNING -->
+<div class="friday-warn" id="fridayWarn">
+  ⚠️ <strong>FRIDAY RULE:</strong> No Dark Ticker trades on Fridays due to weekend time decay — unless market drops 5%+ (extreme case only).
+</div>
+
+<!-- TRIGGER ALERT -->
+<div class="trigger-alert" id="triggerAlert">
+  <div class="trigger-title" id="triggerTitle">🌑 DARK TICKER SIGNAL DETECTED</div>
+  <ul class="trigger-list" id="triggerList"></ul>
+</div>
+
+<!-- BLUEPRINT PANEL -->
+<div class="blueprint-panel">
+  <div class="bp-title">🌑 Post Market Profits — Active Rules</div>
+  <div class="bp-grid">
+    <div class="bp-item"><div class="bp-label">Trigger</div><div class="bp-val">−1% Drop in Index</div></div>
+    <div class="bp-item"><div class="bp-label">Trade Window</div><div class="bp-val">4:00–4:15 PM ET</div></div>
+    <div class="bp-item"><div class="bp-label">Option Type</div><div class="bp-val">0DTE Call Options</div></div>
+    <div class="bp-item"><div class="bp-label">Hold Period</div><div class="bp-val">Overnight</div></div>
+    <div class="bp-item"><div class="bp-label">Exit By</div><div class="bp-val">2:00 PM ET Next Day</div></div>
+    <div class="bp-item"><div class="bp-label">Win Rate</div><div class="bp-val">88% Historical</div></div>
+    <div class="bp-item"><div class="bp-label">Strong Months</div><div class="bp-val">Target 100%+ Gain</div></div>
+    <div class="bp-item"><div class="bp-label">Weak Months</div><div class="bp-val">Target 50%+ Gain</div></div>
+    <div class="bp-item"><div class="bp-label">No Fridays</div><div class="bp-val">Unless Drop 5%+</div></div>
+  </div>
+</div>
+
+<!-- SEASONALITY -->
+<div class="season-panel">
+  <div class="season-title">📅 SPY Seasonality — 10-Year Win Rate by Month (Signal at High)</div>
+  <div class="season-grid" id="seasonGrid"></div>
+</div>
+
+<!-- RULES CHIPS -->
+<div class="rules-bar">
+  <div class="rule-chip"><div class="dot red"></div><strong>TRIGGERED</strong> ≥−1% drop — trade at 4:00 PM ET</div>
+  <div class="rule-chip"><div class="dot amber"></div><strong>CLOSE</strong> 75–99% to trigger</div>
+  <div class="rule-chip"><div class="dot green"></div>88% historical win rate on next-day high</div>
+  <div class="rule-chip"><div class="dot accent"></div>Buy calls · Hold overnight · Exit by 2 PM ET</div>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>Chg %</th>
+        <th>Progress to −1%</th>
+        <th>Signal</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">Enter your Finnhub API key above and click SCAN</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CARDS (mobile) -->
+<div class="cards" id="cards"></div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot d"></div>Triggered (≥−1%)</div>
+    <div class="leg-item"><div class="leg-dot w"></div>Close (75–99%)</div>
+    <div class="leg-item"><div class="leg-dot m"></div>Watch (50–74%)</div>
+    <div class="leg-item"><div class="leg-dot z"></div>No Signal</div>
+  </div>
+  <div class="refresh-info" id="refreshInfo">Auto-refresh: 30s (market open) · 5m (closed)</div>
+</div>
+
+<script>
+// ── DARK TICKERS ──
+const TICKERS = [
+  { s:'SPY',  name:'SPDR S&P 500 ETF',         top:true },
+  { s:'QQQ',  name:'Invesco Nasdaq 100 ETF',    top:true },
+  { s:'DIA',  name:'SPDR Dow Jones ETF',        top:true },
+  { s:'IWM',  name:'iShares Russell 2000 ETF',  top:true },
+  { s:'GLD',  name:'SPDR Gold Shares',          top:true },
+  { s:'XLF',  name:'Financial Select SPDR',     top:true },
+  { s:'XLP',  name:'Consumer Staples SPDR',     top:true },
+  { s:'XLU',  name:'Utilities Select SPDR',     top:true },
+  { s:'XLE',  name:'Energy Select SPDR',        top:true },
+  { s:'EEM',  name:'iShares MSCI Emerg. Mkts',  top:false },
+  { s:'EFA',  name:'iShares MSCI EAFE ETF',     top:false },
+  { s:'XLB',  name:'Materials Select SPDR',     top:false },
+  { s:'XLC',  name:'Comm. Services SPDR',       top:false },
+  { s:'XLI',  name:'Industrial Select SPDR',    top:false },
+  { s:'XLV',  name:'Health Care Select SPDR',   top:false },
+  { s:'XLY',  name:'Consumer Discr. SPDR',      top:false },
+  { s:'XLRE', name:'Real Estate Select SPDR',   top:false },
+  { s:'XRT',  name:'SPDR S&P Retail ETF',       top:false },
+  { s:'XHB',  name:'SPDR S&P Homebuilders ETF', top:false },
+  { s:'KBE',  name:'SPDR S&P Bank ETF',         top:false },
+  { s:'KRE',  name:'SPDR S&P Regional Bank ETF',top:false },
+  { s:'MDY',  name:'SPDR S&P MidCap 400 ETF',   top:false },
+  { s:'VXX',  name:'iPath S&P 500 VIX ETF',     top:false },
+  { s:'UNG',  name:'United States Natural Gas',  top:false },
+  { s:'UUP',  name:'Invesco DB US Dollar ETF',   top:false },
+];
+
+// ── SEASONALITY DATA (10-yr SPY win rate at high) ──
+const SEASONALITY = [
+  { m:'Jan', rate:85, cls:'good' },
+  { m:'Feb', rate:96, cls:'best' },
+  { m:'Mar', rate:88, cls:'good' },
+  { m:'Apr', rate:78, cls:'ok'   },
+  { m:'May', rate:100,cls:'best' },
+  { m:'Jun', rate:82, cls:'good' },
+  { m:'Jul', rate:79, cls:'ok'   },
+  { m:'Aug', rate:88, cls:'good' },
+  { m:'Sep', rate:84, cls:'good' },
+  { m:'Oct', rate:96, cls:'best' },
+  { m:'Nov', rate:90, cls:'good' },
+  { m:'Dec', rate:87, cls:'good' },
+];
+
+let apiKey = 'd7ubki9r01qnv95n0argd7ubki9r01qnv95n0as0';
+let scanInterval = null;
+
+// ── SEASONALITY RENDER ──
+function renderSeasonality() {
+  const now = new Date();
+  const curMonth = now.getMonth(); // 0-indexed
+  const grid = document.getElementById('seasonGrid');
+  const maxRate = 100;
+  let html = '';
+  SEASONALITY.forEach((s, i) => {
+    const isCurrent = i === curMonth;
+    const barH = Math.round((s.rate / maxRate) * 56);
+    html += `<div class="season-col ${isCurrent ? 'current-month' : ''}">
+      <div class="season-bar-wrap">
+        <div class="season-bar ${s.cls}" style="height:${barH}px"></div>
+      </div>
+      <div class="season-month">${s.m}</div>
+      <div class="season-pct ${s.cls}">${s.rate}%</div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+renderSeasonality();
+
+// ── CLOCK + MARKET STATUS ──
+function getMarketStatus() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone:'America/New_York' }));
+  const day = et.getDay();
+  const h = et.getHours(), m = et.getMinutes();
+  const mins = h * 60 + m;
+  if (day === 0 || day === 6) return 'closed';
+  if (mins < 390) return 'pre';
+  if (mins >= 390 && mins < 960) return 'open';
+  if (mins >= 960 && mins < 975) return 'after'; // 4:00–4:15 PM = dark window
+  return 'closed';
+}
+
+function isFriday() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone:'America/New_York' }));
+  return et.getDay() === 5;
+}
+
+function isDarkWindow() {
+  return getMarketStatus() === 'after';
+}
+
+function updateClock() {
+  const now = new Date();
+  const etStr = now.toLocaleTimeString('en-US', { timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  document.getElementById('clock').textContent = etStr + ' ET';
+
+  const status = getMarketStatus();
+  const badge = document.getElementById('market-badge');
+  const labels = { open:'MARKET OPEN', pre:'PRE-MARKET', after:'🌑 DARK WINDOW', closed:'MARKET CLOSED' };
+  badge.className = 'market-badge ' + status;
+  badge.textContent = labels[status] || 'CLOSED';
+
+  // Friday warning
+  document.getElementById('fridayWarn').classList.toggle('show', isFriday());
+
+  // Window badge highlight
+  const wb = document.getElementById('windowBadge');
+  if (isDarkWindow()) {
+    wb.style.borderColor = '#a89fff';
+    wb.style.background = 'rgba(108,99,247,0.15)';
+    wb.style.color = '#a89fff';
+  } else {
+    wb.style.borderColor = '';
+    wb.style.background = '';
+    wb.style.color = '';
+  }
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── FETCH ──
+async function fetchAll() {
+  if (!apiKey) return;
+
+  const results = await Promise.all(TICKERS.map(async (tk) => {
+    try {
+      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(tk.s)}&token=${apiKey}`);
+      const d = await res.json();
+      const price = d.c || 0;
+      const prevClose = d.pc || 0;
+      const chg = prevClose > 0 ? ((price - prevClose) / prevClose * 100) : 0;
+      // progress toward -1% trigger
+      const prog = chg < 0 ? Math.min(100, Math.round(Math.abs(chg) / 1.0 * 100)) : 0;
+      return { ...tk, price, chg, prog };
+    } catch {
+      return { ...tk, price:0, chg:0, prog:0 };
+    }
+  }));
+
+  // sort: triggered first, then by progress
+  results.sort((a,b) => {
+    if (b.prog >= 100 && a.prog < 100) return 1;
+    if (a.prog >= 100 && b.prog < 100) return -1;
+    return b.prog - a.prog;
+  });
+
+  document.getElementById('apiStatus').textContent = '✓ Connected';
+  document.getElementById('apiStatus').className = 'api-status ok';
+
+  renderTable(results);
+  renderCards(results);
+  renderAlerts(results);
+
+  const status = getMarketStatus();
+  const interval = status === 'open' ? 30000 : 300000;
+  document.getElementById('refreshInfo').textContent =
+    'Auto-refresh: ' + (status === 'open' ? '30s (market open)' : '5m (closed)');
+}
+
+// ── TABLE ──
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  let html = '';
+  data.forEach(r => {
+    const triggered = r.prog >= 100;
+    const rowCls = triggered ? 'triggered' : '';
+    const sign = r.chg >= 0 ? '+' : '';
+    const chgFmt = r.price > 0 ? sign + r.chg.toFixed(2) + '%' : '—';
+    const chgCls = r.chg < 0 ? 'neg' : r.chg > 0 ? 'pos' : 'flat';
+    const priceFmt = r.price > 0 ? '$' + r.price.toFixed(2) : '—';
+    const progCls = r.prog >= 100 ? 'danger' : r.prog >= 75 ? 'warn' : r.prog >= 50 ? 'mild' : 'none';
+    const progPct = r.prog + '%';
+
+    const signalHtml = triggered
+      ? `<span class="signal-on">🌑 TRIGGERED${isFriday() ? ' ⚠️ FRI' : ''}</span>`
+      : r.prog >= 75
+        ? `<span class="signal-watch">⚡ CLOSE (${r.prog}%)</span>`
+        : `<span class="signal-off">—</span>`;
+
+    const actionHtml = triggered
+      ? `<span class="action-cell active">Buy 0DTE Calls · 4:00–4:15 PM ET</span>`
+      : r.prog >= 75
+        ? `<span class="action-cell" style="color:var(--amber)">Watch — approaching trigger</span>`
+        : `<span class="action-cell">—</span>`;
+
+    const badge = triggered ? `<span class="trig-badge">−1% HIT</span>` : '';
+
+    html += `<tr class="${rowCls}">
+      <td>
+        <div class="sym">${r.s}${badge}</div>
+        <div class="sym-name">${r.name}</div>
+      </td>
+      <td class="price-cell">${priceFmt}</td>
+      <td class="chg-cell ${chgCls}">${chgFmt}</td>
+      <td>
+        <div class="prog-wrap">
+          <div class="prog-pct ${progCls}">${progPct}</div>
+          <div class="prog-track"><div class="prog-fill ${progCls}" style="width:${Math.min(100,r.prog)}%"></div></div>
+        </div>
+      </td>
+      <td>${signalHtml}</td>
+      <td>${actionHtml}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+// ── CARDS ──
+function renderCards(data) {
+  const cont = document.getElementById('cards');
+  let html = '';
+  data.forEach(r => {
+    const triggered = r.prog >= 100;
+    const cls = triggered ? 'triggered' : '';
+    const sign = r.chg >= 0 ? '+' : '';
+    const chgFmt = r.price > 0 ? sign + r.chg.toFixed(2) + '%' : '—';
+    const chgCls = r.chg < 0 ? 'neg' : r.chg > 0 ? 'pos' : 'flat';
+    const priceFmt = r.price > 0 ? '$' + r.price.toFixed(2) : '—';
+    const progCls = r.prog >= 100 ? 'danger' : r.prog >= 75 ? 'warn' : r.prog >= 50 ? 'mild' : 'none';
+    const badge = triggered ? '<span class="trig-badge">−1% HIT</span>' : '';
+    const actionCls = triggered ? 'active' : '';
+    const actionTxt = triggered
+      ? '🌑 Buy 0DTE Calls · 4:00–4:15 PM ET'
+      : r.prog >= 75 ? '⚡ Watch — approaching trigger' : '—';
+
+    html += `<div class="card ${cls}">
+      <div class="card-top">
+        <div>
+          <div class="card-sym">${r.s} ${badge}</div>
+          <div class="card-name">${r.name}</div>
+        </div>
+        <div class="card-price">${priceFmt}<br><span class="card-chg ${chgCls}">${chgFmt}</span></div>
+      </div>
+      <div class="card-bar-row">
+        <span class="card-pct ${progCls}">${r.prog}%</span>
+        <div class="card-track"><div class="card-fill ${progCls}" style="width:${Math.min(100,r.prog)}%"></div></div>
+      </div>
+      <div class="card-bottom ${actionCls}">${actionTxt}</div>
+    </div>`;
+  });
+  cont.innerHTML = html || '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">Enter API key and scan</div>';
+}
+
+// ── ALERTS ──
+function renderAlerts(data) {
+  const triggered = data.filter(r => r.prog >= 100);
+  const alertBox = document.getElementById('triggerAlert');
+  const alertList = document.getElementById('triggerList');
+  const alertTitle = document.getElementById('triggerTitle');
+
+  if (triggered.length === 0) {
+    alertBox.classList.remove('show', 'fired');
+    return;
+  }
+
+  alertBox.classList.add('show');
+  const inWindow = isDarkWindow();
+  const fri = isFriday();
+
+  if (inWindow && !fri) {
+    alertBox.classList.add('fired');
+    alertTitle.textContent = '🚨 DARK WINDOW OPEN — TRADE NOW (4:00–4:15 PM ET)';
+    alertTitle.className = 'trigger-title red';
+  } else {
+    alertBox.classList.remove('fired');
+    alertTitle.textContent = '🌑 DARK TICKER SIGNAL — Ready for 4:00 PM ET Trade Window';
+    alertTitle.className = 'trigger-title purple';
+  }
+
+  let html = '';
+  triggered.forEach(r => {
+    const sign = r.chg >= 0 ? '+' : '';
+    html += `<li>
+      <strong>${r.s}</strong> — ${r.name}
+      &nbsp;@ $${r.price > 0 ? r.price.toFixed(2) : '—'} (${sign}${r.chg.toFixed(2)}%)
+      &nbsp;<span class="trade-tag">Buy 0DTE Calls · Hold Overnight · Exit by 2PM ET</span>
+      ${fri ? '<span style="color:var(--amber);font-size:11px;"> ⚠️ Friday — skip unless 5%+ drop</span>' : ''}
+    </li>`;
+  });
+  alertList.innerHTML = html;
+}
+
+// ── START ──
+function startScanner() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) {
+    document.getElementById('apiStatus').textContent = '⚠ Enter API key';
+    document.getElementById('apiStatus').className = 'api-status err';
+    return;
+  }
+  apiKey = key;
+  localStorage.setItem('finnhub_key_dark', key);
+  document.getElementById('apiStatus').textContent = '⏳ Connecting…';
+  if (scanInterval) clearInterval(scanInterval);
+  fetchAll();
+  const interval = getMarketStatus() === 'open' ? 30000 : 300000;
+  scanInterval = setInterval(fetchAll, interval);
+}
+
+// ── AUTO-LOAD ──
+window.addEventListener('load', () => {
+  const baked = 'd7ubki9r01qnv95n0argd7ubki9r01qnv95n0as0';
+  const saved = localStorage.getItem('finnhub_key_dark') || baked;
+  document.getElementById('apiKey').value = saved;
+  startScanner();
+});
+</script>
+</body>
+</html>
