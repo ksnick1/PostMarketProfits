@@ -5,35 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Post Market Profits Scanner</title>
 <style>
-/* ── FIREWORKS CANVAS ── */
-#fireworks-canvas {
-  position:fixed; top:0; left:0; width:100%; height:100%;
-  pointer-events:none; z-index:999; opacity:1;
+#fireworks-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;opacity:1;}
+:root[data-theme="dark"]{
+--bg:#07080d;--surface:#0e1018;--surface2:#13151f;
+--border:#1c1f2e;--border2:#252838;
+--text:#dde1f0;--text2:#f5f6fa;--muted:#6b708f;--muted2:#9ba3c8;
+--accent:#6c63f7;--red:#f06e6e;--red-dim:rgba(240,110,110,0.13);
+--red-glow:rgba(240,110,110,0.2);--amber:#f5c842;--green:#3dd68c;--blue:#5ba3f5;
+--shadow:rgba(0,0,0,0.4);--brand-bg:linear-gradient(135deg,#1a1a2e,#4a3f8f);
 }
-
-/* ── THEME VARIABLES ── */
-:root[data-theme="dark"] {
-  --bg:#07080d; --surface:#0e1018; --surface2:#13151f;
-  --border:#1c1f2e; --border2:#252838;
-  --text:#dde1f0; --text2:#f5f6fa; --muted:#6b708f; --muted2:#9ba3c8;
-  --accent:#6c63f7; --red:#f06e6e; --red-dim:rgba(240,110,110,0.13);
-  --red-glow:rgba(240,110,110,0.2); --amber:#f5c842; --green:#3dd68c; --blue:#5ba3f5;
-  --shadow:rgba(0,0,0,0.4); --brand-bg:linear-gradient(135deg,#1a1a2e,#4a3f8f);
-}
-:root[data-theme="light"] {
-  --bg:#f0f2f8; --surface:#ffffff; --surface2:#e8eaf2;
-  --border:#d0d4e8; --border2:#c2c7df;
-  --text:#1a1d2e; --text2:#0d0f1a; --muted:#7a80a0; --muted2:#555b7a;
-  --accent:#5a52e0; --red:#d63c3c; --red-dim:rgba(214,60,60,0.10);
-  --red-glow:rgba(214,60,60,0.18); --amber:#b8860b; --green:#1a9e5c; --blue:#2563c4;
-  --shadow:rgba(0,0,0,0.10); --brand-bg:linear-gradient(135deg,#4a3f8f,#6c63f7);
+:root[data-theme="light"]{
+--bg:#f0f2f8;--surface:#ffffff;--surface2:#e8eaf2;
+--border:#d0d4e8;--border2:#c2c7df;
+--text:#1a1d2e;--text2:#0d0f1a;--muted:#7a80a0;--muted2:#555b7a;
+--accent:#5a52e0;--red:#d63c3c;--red-dim:rgba(214,60,60,0.10);
+--red-glow:rgba(214,60,60,0.18);--amber:#b8860b;--green:#1a9e5c;--blue:#2563c4;
+--shadow:rgba(0,0,0,0.10);--brand-bg:linear-gradient(135deg,#4a3f8f,#6c63f7);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{min-height:100vh;}
 body{background:var(--bg);color:var(--text);font-family:Tahoma,Geneva,sans-serif;font-size:15px;padding:12px 16px 24px;transition:background .25s,color .25s;}
 [data-theme="dark"] body{background-image:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(108,99,247,0.07) 0%,transparent 70%);}
-
-/* ── HEADER ── */
 .header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border2);}
 .brand{display:flex;align-items:center;gap:10px;}
 .brand-icon{width:36px;height:36px;background:var(--brand-bg);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;box-shadow:0 0 18px rgba(108,99,247,0.35);flex-shrink:0;}
@@ -52,8 +44,6 @@ body{background:var(--bg);color:var(--text);font-family:Tahoma,Geneva,sans-serif
 .btn-icon:hover{background:var(--border2);}
 .btn-csv{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--green);cursor:pointer;font-size:13px;font-weight:700;padding:5px 11px;transition:background .15s;font-family:Tahoma,Geneva,sans-serif;}
 .btn-csv:hover{background:var(--border2);}
-
-/* ── API BAR ── */
 .api-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:12px;}
 .api-bar label{font-size:13px;color:var(--muted2);white-space:nowrap;}
 .api-bar input{flex:1;min-width:150px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:Tahoma,Geneva,sans-serif;font-size:13px;padding:5px 10px;outline:none;transition:border-color .15s;}
@@ -63,16 +53,12 @@ body{background:var(--bg);color:var(--text);font-family:Tahoma,Geneva,sans-serif
 .api-status{font-size:12px;}
 .api-status.ok{color:var(--green);}
 .api-status.err{color:var(--red);}
-
-/* ── SCAN STATUS ── */
 .scan-status-bar{display:none;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:7px 14px;margin-bottom:12px;font-size:13px;}
 .scan-status-item{display:flex;align-items:center;gap:6px;color:var(--muted2);}
 .scan-status-item strong{color:var(--text);}
 .dot-live{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:livepulse 2s ease-in-out infinite;}
 @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 .countdown-val{color:var(--amber);font-weight:700;}
-
-/* ── FRIDAY / TRIGGER / BLUEPRINT / SEASON / RULES / TABLE / FOOTER / CARDS ── */
 .friday-warn{background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--amber);margin-bottom:12px;display:none;}
 .friday-warn.show{display:block;}
 .trigger-alert{display:none;background:rgba(108,99,247,0.12);border:1px solid rgba(108,99,247,0.4);border-radius:10px;padding:12px 16px;margin-bottom:12px;}
@@ -80,7 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:Tahoma,Geneva,sans-serif
 .trigger-alert.fired{background:rgba(240,110,110,0.1);border-color:rgba(240,110,110,0.4);animation:alertpulse 2s ease-in-out infinite;}
 @keyframes alertpulse{0%,100%{box-shadow:0 0 0 0 rgba(240,110,110,0.15);}50%{box-shadow:0 0 16px 4px rgba(240,110,110,0.15);}}
 .trigger-title{font-size:13px;font-weight:700;margin-bottom:6px;letter-spacing:0.03em;}
-.trigger-title.purple{color:#a89fff;} .trigger-title.red{color:var(--red);}
+.trigger-title.purple{color:#a89fff;}.trigger-title.red{color:var(--red);}
 .trigger-list{list-style:none;}
 .trigger-list li{font-size:14px;color:var(--text);padding:4px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .trigger-list li::before{content:'▶';font-size:9px;color:var(--red);}
@@ -155,14 +141,15 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
 .leg-dot{width:8px;height:8px;border-radius:2px;}
 .leg-dot.d{background:var(--red);}.leg-dot.w{background:var(--amber);}.leg-dot.m{background:var(--blue);}.leg-dot.z{background:var(--border2);}
 .refresh-info{font-size:12px;color:var(--muted2);}
+/* MOBILE CARDS */
 .cards{display:none;flex-direction:column;gap:10px;margin-bottom:14px;}
 .card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px;box-shadow:0 2px 8px var(--shadow);transition:border-color .15s;}
 .card.triggered{border-color:rgba(240,110,110,0.5);background:var(--red-dim);box-shadow:0 0 12px var(--red-glow),0 2px 8px var(--shadow);}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
 .card-left{flex:1;min-width:0;}
+.card-right{text-align:right;flex-shrink:0;margin-left:10px;}
 .card-sym{font-weight:700;font-size:18px;color:var(--text2);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .card-name{font-size:12px;color:var(--muted2);margin-top:2px;}
-.card-right{text-align:right;flex-shrink:0;margin-left:10px;}
 .card-price{font-weight:700;font-size:18px;color:var(--text2);}
 .card-chg{font-size:14px;font-weight:600;margin-top:2px;}
 .card-chg.neg{color:var(--red);}.card-chg.pos{color:var(--green);}.card-chg.flat{color:var(--muted2);}
@@ -197,55 +184,43 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
 </style>
 </head>
 <body>
-
-<!-- FIREWORKS CANVAS -->
 <canvas id="fireworks-canvas"></canvas>
 
-<!-- HEADER -->
 <div class="header">
   <div class="brand">
     <div class="brand-icon">💲</div>
-    <div class="brand-text">
-      <div class="brand-name">Post Market Profits Scanner</div>
-    </div>
+    <div class="brand-text"><div class="brand-name">Post Market Profits Scanner</div></div>
   </div>
   <div class="header-right">
     <div class="window-badge" id="windowBadge">⏰ Trade Window: <span>4:00–4:15 PM ET</span></div>
     <div id="clock">--:--:-- --</div>
     <div id="market-badge" class="market-badge closed">CLOSED</div>
-    <button class="btn-icon" id="themeBtn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
-    <button class="btn-icon" onclick="celebrate()" title="🎆 Celebrate!">🎆 Celebrate!</button>
-    <button class="btn-csv" onclick="exportCSV()" title="Export to CSV">⬇ CSV</button>
+    <button class="btn-icon" id="themeBtn" onclick="toggleTheme()">🌙</button>
+    <button class="btn-icon" onclick="celebrate()">🎆 Celebrate!</button>
+    <button class="btn-csv" onclick="exportCSV()">⬇ CSV</button>
   </div>
 </div>
 
-<!-- API BAR -->
 <div class="api-bar">
   <label>FINNHUB API KEY:</label>
-  <input type="text" id="apiKey" placeholder="Enter your Finnhub API key…" />
+  <input type="text" id="apiKey" placeholder="Enter your Finnhub API key…"/>
   <button class="btn-scan" onclick="startScanner()">▶ SCAN</button>
   <span class="api-status" id="apiStatus"></span>
 </div>
 
-<!-- SCAN STATUS BAR -->
 <div class="scan-status-bar" id="scanStatusBar">
-  <div class="scan-status-item"><span class="dot-live"></span> <strong>LIVE</strong></div>
+  <div class="scan-status-item"><span class="dot-live"></span><strong>LIVE</strong></div>
   <div class="scan-status-item">Last scan: <strong id="lastScanTime">—</strong></div>
   <div class="scan-status-item">Next refresh: <span class="countdown-val" id="countdownVal">—</span></div>
 </div>
 
-<!-- FRIDAY WARNING -->
-<div class="friday-warn" id="fridayWarn">
-  ⚠️ <strong>FRIDAY RULE:</strong> No trades on Fridays due to weekend time decay — unless market drops 5%+ (extreme case only).
-</div>
+<div class="friday-warn" id="fridayWarn">⚠️ <strong>FRIDAY RULE:</strong> No trades on Fridays due to weekend time decay — unless market drops 5%+ (extreme case only).</div>
 
-<!-- TRIGGER ALERT -->
 <div class="trigger-alert" id="triggerAlert">
   <div class="trigger-title" id="triggerTitle">🌑 DARK TICKER SIGNAL DETECTED</div>
   <ul class="trigger-list" id="triggerList"></ul>
 </div>
 
-<!-- BLUEPRINT PANEL -->
 <div class="blueprint-panel">
   <div class="bp-title">💲 Post Market Profits — Active Rules</div>
   <div class="bp-grid">
@@ -261,13 +236,11 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
   </div>
 </div>
 
-<!-- SEASONALITY -->
 <div class="season-panel">
   <div class="season-title">📅 SPY Seasonality — 10-Year Win Rate by Month</div>
   <div class="season-grid" id="seasonGrid"></div>
 </div>
 
-<!-- RULES CHIPS -->
 <div class="rules-bar">
   <div class="rule-chip"><div class="dot red"></div><strong>TRIGGERED</strong> ≥−1% drop — trade at 4:00 PM ET</div>
   <div class="rule-chip"><div class="dot amber"></div><strong>CLOSE</strong> 75–99% to trigger</div>
@@ -275,7 +248,6 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
   <div class="rule-chip"><div class="dot accent"></div>Buy calls · Hold overnight · Exit by 2 PM ET</div>
 </div>
 
-<!-- WIN RATE LEGEND -->
 <div class="wr-legend" id="wrLegend">
   <span class="wr-legend-title">📊 Next-Day Bounce Rate (after ≥−1% drop):</span>
   <span class="wr-leg"><span class="winrate-badge high">≥70%</span> Strong bounce</span>
@@ -284,7 +256,7 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
   <span style="color:var(--muted);font-size:11px;">· 1-year lookback · Yahoo Finance</span>
 </div>
 
-<!-- DESKTOP TABLE -->
+<!-- DESKTOP TABLE — rows built ONCE, updated in place forever after -->
 <div class="table-wrap">
   <table>
     <thead>
@@ -294,18 +266,13 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
         <th>Next-Day Bounce Rate</th><th>Action</th>
       </tr>
     </thead>
-    <tbody id="tableBody">
-      <tr><td colspan="7" style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">Enter your Finnhub API key above and click SCAN</td></tr>
-    </tbody>
+    <tbody id="tableBody"></tbody>
   </table>
 </div>
 
-<!-- MOBILE CARDS -->
-<div class="cards" id="cards">
-  <div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">Enter API key and click SCAN</div>
-</div>
+<!-- MOBILE CARDS — built ONCE, updated in place -->
+<div class="cards" id="cards"></div>
 
-<!-- FOOTER -->
 <div class="footer">
   <div class="legend">
     <div class="leg-item"><div class="leg-dot d"></div>Triggered (≥−1%)</div>
@@ -317,173 +284,31 @@ td{padding:10px 13px;vertical-align:middle;white-space:nowrap;}
 </div>
 
 <script>
-/* ════════════════════════════════════
-   💕 FIREWORKS — hearts, stars, coins
-════════════════════════════════════ */
+/* ══ FIREWORKS ══ */
 const canvas = document.getElementById('fireworks-canvas');
 const ctx = canvas.getContext('2d');
-let W, H, particles = [], rockets = [];
-
+let W,H,particles=[],rockets=[];
 function resizeCanvas(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
-resizeCanvas();
-window.addEventListener('resize',resizeCanvas);
-
-const SHAPES = ['❤️','💕','✨','⭐','💰','💫','🌟','💸'];
-const COLORS = ['#f06e6e','#f5c842','#a78bfa','#3dd68c','#5ba3f5','#ff9fb3','#ffe066','#b9f7e6'];
-
-class Rocket {
-  constructor(){
-    this.x = Math.random()*W*0.8 + W*0.1;
-    this.y = H + 10;
-    this.tx = Math.random()*W*0.7 + W*0.15;
-    this.ty = Math.random()*H*0.45 + H*0.05;
-    this.speed = 12 + Math.random()*6;
-    const angle = Math.atan2(this.ty-this.y, this.tx-this.x);
-    this.vx = Math.cos(angle)*this.speed;
-    this.vy = Math.sin(angle)*this.speed;
-    this.trail = [];
-    this.exploded = false;
-    this.color = COLORS[Math.floor(Math.random()*COLORS.length)];
-  }
-  update(){
-    this.trail.push({x:this.x, y:this.y, a:1});
-    if(this.trail.length > 12) this.trail.shift();
-    this.x += this.vx; this.y += this.vy;
-    if(Math.abs(this.x-this.tx)<18 && Math.abs(this.y-this.ty)<18) this.explode();
-  }
-  explode(){
-    this.exploded = true;
-    const count = 28 + Math.floor(Math.random()*18);
-    for(let i=0;i<count;i++){
-      particles.push(new Particle(this.x, this.y, this.color));
-    }
-    // Big burst ring
-    for(let i=0;i<8;i++){
-      particles.push(new RingParticle(this.x, this.y, this.color, i/8));
-    }
-  }
-  draw(){
-    // trail
-    this.trail.forEach((t,i)=>{
-      ctx.beginPath();
-      ctx.arc(t.x, t.y, 2*(i/this.trail.length), 0, Math.PI*2);
-      ctx.fillStyle = this.color + Math.floor(t.a*180).toString(16).padStart(2,'0');
-      ctx.fill();
-    });
-    // rocket dot
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 3, 0, Math.PI*2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-  }
-}
-
-class Particle {
-  constructor(x, y, color){
-    this.x = x; this.y = y;
-    const angle = Math.random()*Math.PI*2;
-    const speed = 1.5 + Math.random()*6;
-    this.vx = Math.cos(angle)*speed;
-    this.vy = Math.sin(angle)*speed - 1;
-    this.alpha = 1;
-    this.life = 0.012 + Math.random()*0.018;
-    this.color = color;
-    this.shape = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-    this.size = 12 + Math.random()*14;
-    this.useEmoji = Math.random() > 0.35;
-    this.gravity = 0.09 + Math.random()*0.05;
-    this.rotation = Math.random()*Math.PI*2;
-    this.rotSpeed = (Math.random()-0.5)*0.15;
-  }
-  update(){
-    this.x += this.vx; this.y += this.vy;
-    this.vy += this.gravity;
-    this.vx *= 0.985;
-    this.alpha -= this.life;
-    this.rotation += this.rotSpeed;
-  }
-  draw(){
-    if(this.alpha <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, this.alpha);
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.rotation);
-    if(this.useEmoji){
-      ctx.font = `${this.size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(this.shape, 0, 0);
-    } else {
-      // glowing dot
-      ctx.beginPath();
-      ctx.arc(0, 0, this.size*0.3, 0, Math.PI*2);
-      ctx.fillStyle = this.color;
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = this.color;
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-  get dead(){ return this.alpha <= 0; }
-}
-
-class RingParticle {
-  constructor(x, y, color, frac){
-    this.x = x; this.y = y;
-    const angle = frac * Math.PI * 2;
-    this.vx = Math.cos(angle) * (3 + Math.random()*3);
-    this.vy = Math.sin(angle) * (3 + Math.random()*3) - 0.5;
-    this.alpha = 1; this.life = 0.02;
-    this.color = color; this.size = 3 + Math.random()*3;
-    this.gravity = 0.06;
-  }
-  update(){ this.x+=this.vx; this.y+=this.vy; this.vy+=this.gravity; this.vx*=0.97; this.alpha-=this.life; }
-  draw(){
-    if(this.alpha<=0) return;
-    ctx.save(); ctx.globalAlpha=Math.max(0,this.alpha);
-    ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
-    ctx.fillStyle=this.color; ctx.shadowBlur=10; ctx.shadowColor=this.color; ctx.fill();
-    ctx.restore();
-  }
-  get dead(){ return this.alpha<=0; }
-}
-
-let lastRocket=0, rocketDelay=900, fireworksActive=true, fireworksFadeTimer=null;
-const FIREWORKS_DURATION = 9000; // 9 seconds of fireworks on load
-
+resizeCanvas();window.addEventListener('resize',resizeCanvas);
+const SHAPES=['❤️','💕','✨','⭐','💰','💫','🌟','💸'];
+const COLORS=['#f06e6e','#f5c842','#a78bfa','#3dd68c','#5ba3f5','#ff9fb3','#ffe066','#b9f7e6'];
+class Rocket{constructor(){this.x=Math.random()*W*0.8+W*0.1;this.y=H+10;this.tx=Math.random()*W*0.7+W*0.15;this.ty=Math.random()*H*0.45+H*0.05;this.speed=12+Math.random()*6;const angle=Math.atan2(this.ty-this.y,this.tx-this.x);this.vx=Math.cos(angle)*this.speed;this.vy=Math.sin(angle)*this.speed;this.trail=[];this.exploded=false;this.color=COLORS[Math.floor(Math.random()*COLORS.length)];}update(){this.trail.push({x:this.x,y:this.y,a:1});if(this.trail.length>12)this.trail.shift();this.x+=this.vx;this.y+=this.vy;if(Math.abs(this.x-this.tx)<18&&Math.abs(this.y-this.ty)<18)this.explode();}explode(){this.exploded=true;const count=28+Math.floor(Math.random()*18);for(let i=0;i<count;i++)particles.push(new Particle(this.x,this.y,this.color));for(let i=0;i<8;i++)particles.push(new RingParticle(this.x,this.y,this.color,i/8));}draw(){this.trail.forEach((t,i)=>{ctx.beginPath();ctx.arc(t.x,t.y,2*(i/this.trail.length),0,Math.PI*2);ctx.fillStyle=this.color+Math.floor(t.a*180).toString(16).padStart(2,'0');ctx.fill();});ctx.beginPath();ctx.arc(this.x,this.y,3,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();}}
+class Particle{constructor(x,y,color){this.x=x;this.y=y;const angle=Math.random()*Math.PI*2;const speed=1.5+Math.random()*6;this.vx=Math.cos(angle)*speed;this.vy=Math.sin(angle)*speed-1;this.alpha=1;this.life=0.012+Math.random()*0.018;this.color=color;this.shape=SHAPES[Math.floor(Math.random()*SHAPES.length)];this.size=12+Math.random()*14;this.useEmoji=Math.random()>0.35;this.gravity=0.09+Math.random()*0.05;this.rotation=Math.random()*Math.PI*2;this.rotSpeed=(Math.random()-0.5)*0.15;}update(){this.x+=this.vx;this.y+=this.vy;this.vy+=this.gravity;this.vx*=0.985;this.alpha-=this.life;this.rotation+=this.rotSpeed;}draw(){if(this.alpha<=0)return;ctx.save();ctx.globalAlpha=Math.max(0,this.alpha);ctx.translate(this.x,this.y);ctx.rotate(this.rotation);if(this.useEmoji){ctx.font=`${this.size}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(this.shape,0,0);}else{ctx.beginPath();ctx.arc(0,0,this.size*0.3,0,Math.PI*2);ctx.fillStyle=this.color;ctx.shadowBlur=8;ctx.shadowColor=this.color;ctx.fill();}ctx.restore();}get dead(){return this.alpha<=0;}}
+class RingParticle{constructor(x,y,color,frac){this.x=x;this.y=y;const angle=frac*Math.PI*2;this.vx=Math.cos(angle)*(3+Math.random()*3);this.vy=Math.sin(angle)*(3+Math.random()*3)-0.5;this.alpha=1;this.life=0.02;this.color=color;this.size=3+Math.random()*3;this.gravity=0.06;}update(){this.x+=this.vx;this.y+=this.vy;this.vy+=this.gravity;this.vx*=0.97;this.alpha-=this.life;}draw(){if(this.alpha<=0)return;ctx.save();ctx.globalAlpha=Math.max(0,this.alpha);ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fillStyle=this.color;ctx.shadowBlur=10;ctx.shadowColor=this.color;ctx.fill();ctx.restore();}get dead(){return this.alpha<=0;}}
+let lastRocket=0,rocketDelay=900,fireworksActive=true;
 function fireworksLoop(ts){
-  if(!fireworksActive && particles.length===0 && rockets.length===0){
-    ctx.clearRect(0,0,W,H);
-    return;
-  }
+  if(!fireworksActive&&particles.length===0&&rockets.length===0){ctx.clearRect(0,0,W,H);return;}
   ctx.clearRect(0,0,W,H);
-
-  // Launch rockets
-  if(fireworksActive && ts - lastRocket > rocketDelay){
-    rockets.push(new Rocket());
-    lastRocket = ts;
-    rocketDelay = 700 + Math.random()*500;
-  }
-
-  // Update + draw rockets
-  rockets = rockets.filter(r=>!r.exploded);
-  rockets.forEach(r=>{r.update();r.draw();});
-
-  // Update + draw particles
-  particles = particles.filter(p=>!p.dead);
-  particles.forEach(p=>{p.update();p.draw();});
-
+  if(fireworksActive&&ts-lastRocket>rocketDelay){rockets.push(new Rocket());lastRocket=ts;rocketDelay=700+Math.random()*500;}
+  rockets=rockets.filter(r=>!r.exploded);rockets.forEach(r=>{r.update();r.draw();});
+  particles=particles.filter(p=>!p.dead);particles.forEach(p=>{p.update();p.draw();});
   requestAnimationFrame(fireworksLoop);
 }
-
-// Start fireworks on load, stop after duration
 requestAnimationFrame(fireworksLoop);
-setTimeout(()=>{ fireworksActive=false; }, FIREWORKS_DURATION);
+setTimeout(()=>{fireworksActive=false;},9000);
 
-/* ════════════════════════════════════
-   SCANNER LOGIC
-════════════════════════════════════ */
-const TICKERS = [
+/* ══ SCANNER ══ */
+const TICKERS=[
   {s:'SPY',name:'SPDR S&P 500 ETF'},{s:'QQQ',name:'Invesco Nasdaq 100 ETF'},
   {s:'DIA',name:'SPDR Dow Jones ETF'},{s:'IWM',name:'iShares Russell 2000 ETF'},
   {s:'GLD',name:'SPDR Gold Shares'},{s:'XLF',name:'Financial Select SPDR'},
@@ -498,22 +323,27 @@ const TICKERS = [
   {s:'VXX',name:'iPath S&P 500 VIX ETF'},{s:'UNG',name:'United States Natural Gas'},
   {s:'UUP',name:'Invesco DB US Dollar ETF'},
 ];
+
 const SEASONALITY=[
   {m:'Jan',rate:85,cls:'good'},{m:'Feb',rate:96,cls:'best'},{m:'Mar',rate:88,cls:'good'},
   {m:'Apr',rate:78,cls:'ok'},{m:'May',rate:100,cls:'best'},{m:'Jun',rate:82,cls:'good'},
   {m:'Jul',rate:79,cls:'ok'},{m:'Aug',rate:88,cls:'good'},{m:'Sep',rate:84,cls:'good'},
   {m:'Oct',rate:96,cls:'best'},{m:'Nov',rate:90,cls:'good'},{m:'Dec',rate:87,cls:'good'},
 ];
-let apiKey='d7ubki9r01qnv95n0argd7ubki9r01qnv95n0as0';
+
+let apiKey='';
 let scanInterval=null,countdownInterval=null,nextScanAt=null,lastResults=null;
 const winRateCache={};
 
-function celebrate(){
-  fireworksActive=true;
-  requestAnimationFrame(fireworksLoop);
-  setTimeout(()=>{ fireworksActive=false; }, 7000);
-}
+// ══════════════════════════════════════════════════════
+// KEY FIX: tableBuilt tracks whether rows exist already.
+// On first scan we build rows. On every refresh after that
+// we UPDATE CELLS IN PLACE — never wipe innerHTML again.
+// ══════════════════════════════════════════════════════
+let tableBuilt=false;
+let cardsBuilt=false;
 
+function celebrate(){fireworksActive=true;requestAnimationFrame(fireworksLoop);setTimeout(()=>{fireworksActive=false;},7000);}
 function toggleTheme(){const html=document.documentElement;const next=html.getAttribute('data-theme')==='dark'?'light':'dark';html.setAttribute('data-theme',next);document.getElementById('themeBtn').textContent=next==='dark'?'🌙':'☀️';localStorage.setItem('pmp_theme',next);}
 function initTheme(){const saved=localStorage.getItem('pmp_theme')||'dark';document.documentElement.setAttribute('data-theme',saved);document.getElementById('themeBtn').textContent=saved==='dark'?'🌙':'☀️';}
 
@@ -538,7 +368,6 @@ async function fetchWinRate(symbol){
   const proxies=[`https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`,`https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`];
   let json=null;
   for(const p of proxies){try{const raw=await(await fetch(p)).json();json=raw?.contents?JSON.parse(raw.contents):raw;if(json?.chart?.result?.[0])break;}catch{continue;}}
-  // Finnhub fallback
   if(!json?.chart?.result?.[0]){
     try{
       const to=Math.floor(Date.now()/1000),from=to-365*24*60*60;
@@ -572,7 +401,13 @@ function wrBadge(wr,loading){
 function startCountdown(ms){if(countdownInterval)clearInterval(countdownInterval);nextScanAt=Date.now()+ms;const tick=()=>{const el=document.getElementById('countdownVal');if(el)el.textContent=Math.max(0,Math.ceil((nextScanAt-Date.now())/1000))+'s';};tick();countdownInterval=setInterval(tick,1000);}
 function updateLastScanTime(){const t=new Date().toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',second:'2-digit'});const el=document.getElementById('lastScanTime');if(el)el.textContent=t+' ET';document.getElementById('scanStatusBar').style.display='flex';}
 
-function renderSeasonality(){const cur=new Date().getMonth();document.getElementById('seasonGrid').innerHTML=SEASONALITY.map((s,i)=>{const h=Math.round(s.rate/100*52);return`<div class="season-col ${i===cur?'current-month':''}"><div class="season-bar-wrap"><div class="season-bar ${s.cls}" style="height:${h}px"></div></div><div class="season-month">${s.m}</div><div class="season-pct ${s.cls}">${s.rate}%</div></div>`;}).join('');}
+function renderSeasonality(){
+  const cur=new Date().getMonth();
+  document.getElementById('seasonGrid').innerHTML=SEASONALITY.map((s,i)=>{
+    const h=Math.round(s.rate/100*52);
+    return`<div class="season-col ${i===cur?'current-month':''}"><div class="season-bar-wrap"><div class="season-bar ${s.cls}" style="height:${h}px"></div></div><div class="season-month">${s.m}</div><div class="season-pct ${s.cls}">${s.rate}%</div></div>`;
+  }).join('');
+}
 renderSeasonality();
 
 function getMarketStatus(){const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const day=et.getDay(),mins=et.getHours()*60+et.getMinutes();if(day===0||day===6)return'closed';if(mins<390)return'pre';if(mins<960)return'open';if(mins<975)return'after';return'closed';}
@@ -588,63 +423,160 @@ function updateClock(){
   document.getElementById('fridayWarn').classList.toggle('show',isFriday());
   const wb=document.getElementById('windowBadge');
   wb.style.cssText=isDarkWindow()?'border-color:#a89fff;background:rgba(108,99,247,0.15);color:#a89fff;':'';
-  // 🎆 Fire extra fireworks during the dark window!
   if(isDarkWindow()&&!fireworksActive){fireworksActive=true;requestAnimationFrame(fireworksLoop);setTimeout(()=>{fireworksActive=false;},6000);}
 }
 setInterval(updateClock,1000);updateClock();
 
-async function fetchAll(){
-  if(!apiKey)return;
-  if(lastResults){renderTable(lastResults,winRateCache);renderCards(lastResults,winRateCache);}
-  const results=await Promise.all(TICKERS.map(async tk=>{
-    try{const d=await(await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(tk.s)}&token=${apiKey}`)).json();
-      const price=d.c||0,prev=d.pc||0;const chg=prev>0?(price-prev)/prev*100:0;const prog=chg<0?Math.min(100,Math.round(Math.abs(chg)*100)):0;return{...tk,price,chg,prog};}
-    catch{return lastResults?.find(r=>r.s===tk.s)||{...tk,price:0,chg:0,prog:0};}
-  }));
-  results.sort((a,b)=>b.prog>=100&&a.prog<100?1:a.prog>=100&&b.prog<100?-1:b.prog-a.prog);
-  lastResults=results;
-  document.getElementById('apiStatus').textContent='✓ Connected';document.getElementById('apiStatus').className='api-status ok';
-  const needWR=results.filter(r=>r.prog>=75);
-  document.getElementById('wrLegend').style.display=needWR.length?'flex':'none';
-  renderTable(results,winRateCache);renderCards(results,winRateCache);renderAlerts(results);
-  if(needWR.length){
-    await Promise.all(needWR.map(async r=>{winRateCache[r.s]=await fetchWinRate(r.s);}));
-    renderTable(results,winRateCache);renderCards(results,winRateCache);renderAlerts(results);
-    // 🎆 Fire celebratory fireworks when a trigger is detected!
-    if(results.some(r=>r.prog>=100)){fireworksActive=true;requestAnimationFrame(fireworksLoop);setTimeout(()=>{fireworksActive=false;},5000);}
-  }
-  const status=getMarketStatus(),interval=status==='open'?30000:300000;
-  document.getElementById('refreshInfo').textContent='Auto-refresh: '+(status==='open'?'30s (market open)':'5m (closed)');
-  updateLastScanTime();startCountdown(interval);
+// ══════════════════════════════════════════════════════
+// buildTable: called ONCE to create all rows with stable IDs
+// After this, we only call updateTable to patch cells in place
+// ══════════════════════════════════════════════════════
+function buildTable(data){
+  document.getElementById('tableBody').innerHTML=data.map(r=>`
+    <tr id="tr-${r.s}" class="">
+      <td><div class="sym">${r.s}<span id="badge-${r.s}"></span></div><div class="sym-name">${r.name}</div></td>
+      <td class="price-cell" id="price-${r.s}">—</td>
+      <td class="chg-cell flat" id="chg-${r.s}">—</td>
+      <td><div class="prog-wrap"><div class="prog-pct none" id="prog-pct-${r.s}">0%</div><div class="prog-track"><div class="prog-fill none" id="prog-fill-${r.s}" style="width:0%"></div></div></div></td>
+      <td id="sig-${r.s}"><span class="signal-off">—</span></td>
+      <td id="wr-${r.s}"><span style="color:var(--muted);font-size:12px;">—</span></td>
+      <td id="act-${r.s}"><span class="action-cell">—</span></td>
+    </tr>`).join('');
+  tableBuilt=true;
 }
 
-function renderTable(data,wrMap){
-  if(!data.length)return;
-  document.getElementById('tableBody').innerHTML=data.map(r=>{
-    const trig=r.prog>=100,close=r.prog>=75;const sign=r.chg>=0?'+':'';
-    const chgFmt=r.price>0?sign+r.chg.toFixed(2)+'%':'—';const chgCls=r.chg<0?'neg':r.chg>0?'pos':'flat';
-    const priceFmt=r.price>0?'$'+r.price.toFixed(2):'—';const pc=r.prog>=100?'danger':r.prog>=75?'warn':r.prog>=50?'mild':'none';
-    const badge=trig?`<span class="trig-badge">−1% HIT</span>`:'';
-    const sig=trig?`<span class="signal-on">🌑 TRIGGERED${isFriday()?' ⚠️ FRI':''}</span>`:r.prog>=75?`<span class="signal-watch">⚡ CLOSE (${r.prog}%)</span>`:`<span class="signal-off">—</span>`;
-    const act=trig?`<span class="action-cell active">Buy 0DTE Calls · 4:00–4:15 PM ET</span>`:r.prog>=75?`<span class="action-cell" style="color:var(--amber)">Watch — approaching trigger</span>`:`<span class="action-cell">—</span>`;
-    const wrHtml=(close||trig)?(wrMap&&r.s in wrMap?wrBadge(wrMap[r.s],false):wrBadge(null,true)):'<span style="color:var(--muted);font-size:12px;">—</span>';
-    return`<tr class="${trig?'triggered':''}"><td><div class="sym">${r.s}${badge}</div><div class="sym-name">${r.name}</div></td><td class="price-cell">${priceFmt}</td><td class="chg-cell ${chgCls}">${chgFmt}</td><td><div class="prog-wrap"><div class="prog-pct ${pc}">${r.prog}%</div><div class="prog-track"><div class="prog-fill ${pc}" style="width:${Math.min(100,r.prog)}%"></div></div></div></td><td>${sig}</td><td>${wrHtml}</td><td>${act}</td></tr>`;
-  }).join('');
+function buildCards(data){
+  document.getElementById('cards').innerHTML=data.map(r=>`
+    <div class="card" id="card-${r.s}">
+      <div class="card-top">
+        <div class="card-left"><div class="card-sym">${r.s}<span id="cbadge-${r.s}"></span></div><div class="card-name">${r.name}</div></div>
+        <div class="card-right"><div class="card-price" id="cprice-${r.s}">—</div><div class="card-chg flat" id="cchg-${r.s}">—</div></div>
+      </div>
+      <div class="card-bar-row"><span class="card-pct none" id="cpct-${r.s}">0%</span><div class="card-track"><div class="card-fill none" id="cfill-${r.s}" style="width:0%"></div></div></div>
+      <div class="card-divider"></div>
+      <div class="card-row"><span class="card-label">Signal</span><span class="card-val" id="csig-${r.s}">—</span></div>
+      <div id="cact-${r.s}"></div>
+      <div id="cwr-${r.s}"></div>
+    </div>`).join('');
+  cardsBuilt=true;
 }
 
-function renderCards(data,wrMap){
-  if(!data.length)return;
-  document.getElementById('cards').innerHTML=data.map(r=>{
-    const trig=r.prog>=100,close=r.prog>=75;const sign=r.chg>=0?'+':'';
-    const chgFmt=r.price>0?sign+r.chg.toFixed(2)+'%':'—';const chgCls=r.chg<0?'neg':r.chg>0?'pos':'flat';
-    const priceFmt=r.price>0?'$'+r.price.toFixed(2):'—';const pc=r.prog>=100?'danger':r.prog>=75?'warn':r.prog>=50?'mild':'none';
-    const badge=trig?'<span class="trig-badge">−1% HIT</span>':'';
-    const sigTxt=trig?'🌑 TRIGGERED':r.prog>=75?`⚡ CLOSE (${r.prog}%)`:r.prog>=50?`👁 WATCH (${r.prog}%)`:'—';
-    const actTxt=trig?'🌑 Buy 0DTE Calls · 4:00–4:15 PM ET':r.prog>=75?'⚡ Watch — approaching trigger':'';
-    const actCls=trig?'':r.prog>=75?'watch':'idle';
-    const wrHtml=(close||trig)?`<div class="card-winrate"><span>Next-Day Bounce:</span> ${wrMap&&r.s in wrMap?wrBadge(wrMap[r.s],false):wrBadge(null,true)}</div>`:'';
-    return`<div class="card ${trig?'triggered':''}"><div class="card-top"><div class="card-left"><div class="card-sym">${r.s} ${badge}</div><div class="card-name">${r.name}</div></div><div class="card-right"><div class="card-price">${priceFmt}</div><div class="card-chg ${chgCls}">${chgFmt}</div></div></div><div class="card-bar-row"><span class="card-pct ${pc}">${r.prog}%</span><div class="card-track"><div class="card-fill ${pc}" style="width:${Math.min(100,r.prog)}%"></div></div></div><div class="card-divider"></div><div class="card-row"><span class="card-label">Signal</span><span class="card-val">${sigTxt}</span></div>${actTxt?`<div class="card-action ${actCls}">${actTxt}</div>`:''}${wrHtml}</div>`;
-  }).join('');
+// ══════════════════════════════════════════════════════
+// updateTable: patches ONLY the cells that changed.
+// NEVER touches innerHTML of the whole table body.
+// ══════════════════════════════════════════════════════
+function updateTable(data,wrMap){
+  data.forEach(r=>{
+    const trig=r.prog>=100,close=r.prog>=75;
+    const sign=r.chg>=0?'+':'';
+    const chgFmt=r.price>0?sign+r.chg.toFixed(2)+'%':'—';
+    const chgCls=r.chg<0?'neg':r.chg>0?'pos':'flat';
+    const priceFmt=r.price>0?'$'+r.price.toFixed(2):'—';
+    const pc=trig?'danger':r.prog>=75?'warn':r.prog>=50?'mild':'none';
+    const fri=isFriday();
+
+    // Row triggered class
+    const row=document.getElementById(`tr-${r.s}`);
+    if(row){row.className=trig?'triggered':'';}
+
+    // Badge
+    const badge=document.getElementById(`badge-${r.s}`);
+    if(badge) badge.innerHTML=trig?'<span class="trig-badge">−1% HIT</span>':'';
+
+    // Price
+    const priceEl=document.getElementById(`price-${r.s}`);
+    if(priceEl && r.price>0) priceEl.textContent=priceFmt;
+
+    // Chg%
+    const chgEl=document.getElementById(`chg-${r.s}`);
+    if(chgEl && r.price>0){chgEl.textContent=chgFmt;chgEl.className=`chg-cell ${chgCls}`;}
+
+    // Progress bar
+    const pPct=document.getElementById(`prog-pct-${r.s}`);
+    const pFill=document.getElementById(`prog-fill-${r.s}`);
+    if(pPct){pPct.textContent=r.prog+'%';pPct.className=`prog-pct ${pc}`;}
+    if(pFill){pFill.style.width=Math.min(100,r.prog)+'%';pFill.className=`prog-fill ${pc}`;}
+
+    // Signal
+    const sigEl=document.getElementById(`sig-${r.s}`);
+    if(sigEl){
+      if(trig) sigEl.innerHTML=`<span class="signal-on">🌑 TRIGGERED${fri?' ⚠️ FRI':''}</span>`;
+      else if(r.prog>=75) sigEl.innerHTML=`<span class="signal-watch">⚡ CLOSE (${r.prog}%)</span>`;
+      else sigEl.innerHTML=`<span class="signal-off">—</span>`;
+    }
+
+    // Win Rate — only update if we have data OR it's still loading
+    const wrEl=document.getElementById(`wr-${r.s}`);
+    if(wrEl){
+      if(close||trig){
+        if(r.s in wrMap) wrEl.innerHTML=wrBadge(wrMap[r.s],false);
+        else wrEl.innerHTML=wrBadge(null,true); // show loading spinner, don't blank
+      } else {
+        wrEl.innerHTML='<span style="color:var(--muted);font-size:12px;">—</span>';
+      }
+    }
+
+    // Action
+    const actEl=document.getElementById(`act-${r.s}`);
+    if(actEl){
+      if(trig) actEl.innerHTML=`<span class="action-cell active">Buy 0DTE Calls · 4:00–4:15 PM ET</span>`;
+      else if(r.prog>=75) actEl.innerHTML=`<span class="action-cell" style="color:var(--amber)">Watch — approaching trigger</span>`;
+      else actEl.innerHTML=`<span class="action-cell">—</span>`;
+    }
+  });
+}
+
+function updateCards(data,wrMap){
+  data.forEach(r=>{
+    const trig=r.prog>=100,close=r.prog>=75;
+    const sign=r.chg>=0?'+':'';
+    const chgFmt=r.price>0?sign+r.chg.toFixed(2)+'%':'—';
+    const chgCls=r.chg<0?'neg':r.chg>0?'pos':'flat';
+    const priceFmt=r.price>0?'$'+r.price.toFixed(2):'—';
+    const pc=trig?'danger':r.prog>=75?'warn':r.prog>=50?'mild':'none';
+
+    const card=document.getElementById(`card-${r.s}`);
+    if(card) card.className=`card${trig?' triggered':''}`;
+
+    const cbadge=document.getElementById(`cbadge-${r.s}`);
+    if(cbadge) cbadge.innerHTML=trig?' <span class="trig-badge">−1% HIT</span>':'';
+
+    const cp=document.getElementById(`cprice-${r.s}`);
+    if(cp && r.price>0) cp.textContent=priceFmt;
+
+    const cc=document.getElementById(`cchg-${r.s}`);
+    if(cc && r.price>0){cc.textContent=chgFmt;cc.className=`card-chg ${chgCls}`;}
+
+    const cpct=document.getElementById(`cpct-${r.s}`);
+    const cfill=document.getElementById(`cfill-${r.s}`);
+    if(cpct){cpct.textContent=r.prog+'%';cpct.className=`card-pct ${pc}`;}
+    if(cfill){cfill.style.width=Math.min(100,r.prog)+'%';cfill.className=`card-fill ${pc}`;}
+
+    const csig=document.getElementById(`csig-${r.s}`);
+    if(csig){
+      if(trig) csig.textContent=`🌑 TRIGGERED${isFriday()?' ⚠️ FRI':''}`;
+      else if(r.prog>=75) csig.textContent=`⚡ CLOSE (${r.prog}%)`;
+      else if(r.prog>=50) csig.textContent=`👁 WATCH (${r.prog}%)`;
+      else csig.textContent='—';
+    }
+
+    const cact=document.getElementById(`cact-${r.s}`);
+    if(cact){
+      if(trig) cact.innerHTML=`<div class="card-action">🌑 Buy 0DTE Calls · 4:00–4:15 PM ET</div>`;
+      else if(r.prog>=75) cact.innerHTML=`<div class="card-action watch">⚡ Watch — approaching trigger</div>`;
+      else cact.innerHTML='';
+    }
+
+    const cwr=document.getElementById(`cwr-${r.s}`);
+    if(cwr){
+      if(close||trig){
+        const wrHtml=r.s in wrMap?wrBadge(wrMap[r.s],false):wrBadge(null,true);
+        cwr.innerHTML=`<div class="card-winrate"><span>Next-Day Bounce:</span> ${wrHtml}</div>`;
+      } else {
+        cwr.innerHTML='';
+      }
+    }
+  });
 }
 
 function renderAlerts(data){
@@ -655,26 +587,116 @@ function renderAlerts(data){
   else{box.classList.remove('fired');title.textContent='🌑 DARK TICKER SIGNAL — Ready for 4:00 PM ET Trade Window';title.className='trigger-title purple';}
   document.getElementById('triggerList').innerHTML=trig.map(r=>{
     const sign=r.chg>=0?'+':'';const wr=winRateCache[r.s];
-    return`<li><strong>${r.s}</strong> — ${r.name} &nbsp;@ $${r.price>0?r.price.toFixed(2):'—'} (${sign}${r.chg.toFixed(2)}%) &nbsp;<span class="trade-tag">Buy 0DTE Calls · Hold Overnight · Exit by 2PM ET</span>${wr?` · ${wrBadge(wr,false)}`:''}${fri?'<span style="color:var(--amber);font-size:11px;"> ⚠️ Friday — skip unless 5%+ drop</span>':''}</li>`;
+    return`<li><strong>${r.s}</strong> — ${r.name} &nbsp;@ $${r.price>0?r.price.toFixed(2):'—'} (${sign}${r.chg.toFixed(2)}%) &nbsp;<span class="trade-tag">Buy 0DTE Calls · Hold Overnight · Exit by 2PM ET</span>${wr?` · ${wrBadge(wr,false)}`:''}${isFriday()?'<span style="color:var(--amber);font-size:11px;"> ⚠️ Friday — skip unless 5%+ drop</span>':''}</li>`;
   }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// fetchAll: the core refresh loop.
+// Step 1 — if rows don't exist yet, build them (once only)
+// Step 2 — fetch prices, update cells in place
+// Step 3 — fetch win rates for triggered/close symbols
+// Step 4 — update win rate cells only (no table rebuild)
+// Step 5 — schedule next refresh, adjust interval dynamically
+// ══════════════════════════════════════════════════════
+async function fetchAll(){
+  if(!apiKey) return;
+
+  // Fetch all prices in parallel
+  const results=await Promise.all(TICKERS.map(async tk=>{
+    try{
+      const d=await(await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(tk.s)}&token=${apiKey}`)).json();
+      const price=d.c||0,prev=d.pc||0;
+      const chg=prev>0?(price-prev)/prev*100:0;
+      const prog=chg<0?Math.min(100,Math.round(Math.abs(chg)*100)):0;
+      return{...tk,price,chg,prog};
+    }catch{
+      // On error, preserve last known data — don't zero out
+      const last=lastResults?.find(r=>r.s===tk.s);
+      return last||{...tk,price:0,chg:0,prog:0};
+    }
+  }));
+
+  results.sort((a,b)=>b.prog>=100&&a.prog<100?1:a.prog>=100&&b.prog<100?-1:b.prog-a.prog);
+  lastResults=results;
+
+  document.getElementById('apiStatus').textContent='✓ Connected';
+  document.getElementById('apiStatus').className='api-status ok';
+
+  // Build rows ONCE on first scan, update in place on every refresh after
+  if(!tableBuilt) buildTable(results);
+  if(!cardsBuilt) buildCards(results);
+
+  // Update all cells in place — no innerHTML wipe
+  updateTable(results,winRateCache);
+  updateCards(results,winRateCache);
+  renderAlerts(results);
+
+  const needWR=results.filter(r=>r.prog>=75);
+  document.getElementById('wrLegend').style.display=needWR.length?'flex':'none';
+
+  // Fetch win rates async — update ONLY those cells when they arrive
+  if(needWR.length){
+    needWR.forEach(async r=>{
+      if(winRateCache[r.s]===undefined){
+        const wr=await fetchWinRate(r.s);
+        winRateCache[r.s]=wr;
+        // Patch just the win rate cell — no full re-render
+        const wrEl=document.getElementById(`wr-${r.s}`);
+        if(wrEl) wrEl.innerHTML=wrBadge(wr,false);
+        const cwrEl=document.getElementById(`cwr-${r.s}`);
+        if(cwrEl) cwrEl.innerHTML=`<div class="card-winrate"><span>Next-Day Bounce:</span> ${wrBadge(wr,false)}</div>`;
+        // Update alert panel too
+        renderAlerts(results);
+        if(results.some(r=>r.prog>=100)){fireworksActive=true;requestAnimationFrame(fireworksLoop);setTimeout(()=>{fireworksActive=false;},5000);}
+      }
+    });
+  }
+
+  updateLastScanTime();
+
+  // Dynamic interval — recalculate each scan so it adjusts if market opens/closes
+  const status=getMarketStatus();
+  const interval=status==='open'?30000:300000;
+  document.getElementById('refreshInfo').textContent='Auto-refresh: '+(status==='open'?'30s (market open)':'5m (closed)');
+  startCountdown(interval);
 }
 
 function startScanner(){
   const key=document.getElementById('apiKey').value.trim();
   if(!key){document.getElementById('apiStatus').textContent='⚠ Enter API key';document.getElementById('apiStatus').className='api-status err';return;}
-  apiKey=key;localStorage.setItem('finnhub_key_dark',key);
-  if(!lastResults)document.getElementById('apiStatus').textContent='⏳ Connecting…';
-  if(scanInterval)clearInterval(scanInterval);if(countdownInterval)clearInterval(countdownInterval);
+  apiKey=key;
+  localStorage.setItem('finnhub_key_dark',key);
+  if(scanInterval) clearInterval(scanInterval);
+  if(countdownInterval) clearInterval(countdownInterval);
+  document.getElementById('apiStatus').textContent='⏳ Connecting…';
+
   fetchAll();
-  const interval=getMarketStatus()==='open'?30000:300000;
-  scanInterval=setInterval(()=>{document.getElementById('apiStatus').textContent='🔄 Refreshing…';document.getElementById('apiStatus').className='api-status ok';fetchAll();},interval);
+
+  // Use dynamic interval — re-evaluate market status on each tick
+  scanInterval=setInterval(()=>{
+    document.getElementById('apiStatus').textContent='🔄 Refreshing…';
+    document.getElementById('apiStatus').className='api-status ok';
+    // Clear and reset interval so market open/close adjusts automatically
+    clearInterval(scanInterval);
+    fetchAll().then(()=>{
+      const interval=getMarketStatus()==='open'?30000:300000;
+      scanInterval=setInterval(()=>{
+        document.getElementById('apiStatus').textContent='🔄 Refreshing…';
+        document.getElementById('apiStatus').className='api-status ok';
+        fetchAll();
+      },interval);
+    });
+  }, getMarketStatus()==='open'?30000:300000);
 }
 
 window.addEventListener('load',()=>{
   initTheme();
-  const saved=localStorage.getItem('finnhub_key_dark')||'d7ubki9r01qnv95n0argd7ubki9r01qnv95n0as0';
-  document.getElementById('apiKey').value=saved;
-  startScanner();
+  const saved=localStorage.getItem('finnhub_key_dark')||'';
+  if(saved){
+    document.getElementById('apiKey').value=saved;
+    startScanner();
+  }
 });
 </script>
 </body>
