@@ -399,6 +399,42 @@ async function fetchAll() {
   return results;
 }
 
+// ── PERSIST / RESTORE ──
+const STORE_DATA = 'pmp_scandata_v1';
+const STORE_META = 'pmp_scanmeta_v1';
+
+function saveCache(results, scanTime) {
+  try {
+    localStorage.setItem(STORE_DATA, JSON.stringify(results));
+    localStorage.setItem(STORE_META, JSON.stringify({ts:Date.now(), scanTime}));
+  } catch(e) {}
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(STORE_DATA);
+    const meta = JSON.parse(localStorage.getItem(STORE_META)||'null');
+    if (!raw || !meta) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.length) return null;
+    return {data, meta};
+  } catch(e) { return null; }
+}
+
+function showCacheBanner(scanTime, ts) {
+  const age = Math.round((Date.now()-ts)/60000);
+  const ageStr = age < 60 ? age+'min ago' : Math.round(age/60)+'hr ago';
+  let el = document.getElementById('cache-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cache-banner';
+    el.style.cssText = 'font-size:12px;color:var(--yellow);background:rgba(255,234,0,.07);border:1px solid rgba(255,234,0,.3);border-radius:7px;padding:6px 16px;margin-bottom:12px;';
+    document.querySelector('main').prepend(el);
+  }
+  el.textContent = '💾 Cached data from last scan: '+scanTime+' ('+ageStr+'). Refreshing…';
+}
+function hideCacheBanner() { const el=document.getElementById('cache-banner'); if(el) el.remove(); }
+
 // ── PROCESS RESULTS ──
 function processScanResults(results, isManual) {
   lastScanData = results;
@@ -411,6 +447,8 @@ function processScanResults(results, isManual) {
   else if (newlyTriggered.length>0) { fireworks(50); }
   prevTriggerSyms = nowTriggered;
   setProg('✅ Scan complete — '+results.length+' tickers loaded', 100);
+  saveCache(results, now+' ET');
+  hideCacheBanner();
   renderTable();
 }
 
@@ -528,7 +566,20 @@ function exportCSV(){
 }
 
 // ── AUTO-START ON LOAD ──
-window.addEventListener('load', () => { runScan(); });
+window.addEventListener('load', () => {
+  // 1. Paint cached data instantly so table is never blank
+  const cached = loadCache();
+  if (cached) {
+    lastScanData = cached.data;
+    document.getElementById('last-scan').textContent = cached.meta.scanTime;
+    document.getElementById('live-badge').classList.add('show');
+    setProg('Cached data loaded — refreshing…', 100);
+    renderTable();
+    showCacheBanner(cached.meta.scanTime, cached.meta.ts);
+  }
+  // 2. Always fetch fresh in background (saves new cache when done)
+  runScan();
+});
 </script>
 </body>
 </html>
