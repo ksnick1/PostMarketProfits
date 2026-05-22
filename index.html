@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Post Market Profits Scanner</title>
-
-  <!-- ❤️ Heart Favicon — PNG fallback via canvas so all browsers see it -->
   <link id="favicon" rel="icon" type="image/png" href="">
   <script>
     (function(){
@@ -21,469 +19,112 @@
       } catch(e){}
     })();
   </script>
-
   <style>
-    /* ── RESET & BASE ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0a0c10;
-      --panel:     #111318;
-      --border:    #1e2330;
-      --accent:    #00e5ff;
-      --green:     #00c853;
-      --red:       #ff1744;
-      --yellow:    #ffea00;
-      --orange:    #ff6d00;
-      --text:      #e0e6f0;
-      --muted:     #6b7694;
-      --trig:      #ff1744;
-      --close-clr: #ff9100;
-      --watch-clr: #ffea00;
-      --none-clr:  #2a3040;
-      --font:      Tahoma, 'Segoe UI', Geneva, Verdana, sans-serif;
+      --bg:#0a0c10; --panel:#111318; --border:#1e2330;
+      --accent:#00e5ff; --green:#00c853; --red:#ff1744;
+      --yellow:#ffea00; --orange:#ff6d00; --text:#e0e6f0; --muted:#6b7694;
+      --trig:#ff1744; --close-clr:#ff9100; --watch-clr:#ffea00;
+      --none-clr:#2a3040; --font:Tahoma,'Segoe UI',Geneva,Verdana,sans-serif;
     }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 13px;
-      min-height: 100vh;
-    }
-
-    /* ── FIREWORKS OVERLAY ── */
-    #fw-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      z-index: 9999;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    #fw-overlay.active { display: block; }
-    .fw-particle {
-      position: absolute;
-      font-size: 28px;
-      animation: fw-fly var(--dur, 1.4s) ease-out forwards;
-      opacity: 1;
-    }
-    @keyframes fw-fly {
-      0%   { transform: translate(0,0) scale(1); opacity: 1; }
-      80%  { opacity: .8; }
-      100% { transform: translate(var(--tx),var(--ty)) scale(.4); opacity: 0; }
-    }
-
-    /* ── HEADER ── */
-    header {
-      background: linear-gradient(135deg, #0d1117 0%, #131a27 100%);
-      border-bottom: 2px solid var(--border);
-      padding: 12px 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .logo {
-      font-family: var(--font);
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: .5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .logo span { color: var(--text); }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    /* Clock */
-    .clock-box {
-      background: #0a0c10;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 7px 16px;
-      text-align: center;
-      min-width: 180px;
-    }
-    .clock-label { font-size: 10px; color: var(--muted); font-family: var(--font); }
-    #clock {
-      font-family: 'Courier New', monospace;
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 2px;
-    }
-    #market-status { font-size: 11px; margin-top: 2px; font-family: var(--font); font-weight: 600; }
-    .s-open   { color: var(--green); }
-    .s-window { color: var(--orange); font-weight: 700; animation: blink 1s infinite; }
-    .s-closed { color: var(--muted); }
+    body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:13px; min-height:100vh; }
+    #fw-overlay { display:none; position:fixed; inset:0; z-index:9999; pointer-events:none; overflow:hidden; }
+    #fw-overlay.active { display:block; }
+    .fw-particle { position:absolute; font-size:28px; animation:fw-fly var(--dur,1.4s) ease-out forwards; opacity:1; }
+    @keyframes fw-fly { 0%{transform:translate(0,0) scale(1);opacity:1} 80%{opacity:.8} 100%{transform:translate(var(--tx),var(--ty)) scale(.4);opacity:0} }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* Header buttons */
-    .hdr-btn {
-      font-family: var(--font);
-      font-size: 13px;
-      font-weight: 600;
-      background: #131620;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 8px 16px;
-      color: var(--text);
-      cursor: pointer;
-      transition: background .18s, border-color .18s;
-    }
-    .hdr-btn:hover { background: #1a2035; border-color: var(--accent); }
-
-    /* ── API BAR ── */
-    .api-bar {
-      background: #0d1117;
-      border-bottom: 1px solid var(--border);
-      padding: 9px 22px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .api-bar label {
-      font-family: var(--font);
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      font-weight: 600;
-    }
-    #api-key {
-      flex: 1;
-      min-width: 260px;
-      background: #111318;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 7px 12px;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 13px;
-    }
-    #api-key:focus { outline: none; border-color: var(--accent); }
-
-    .btn-scan {
-      font-family: var(--font);
-      font-size: 14px;
-      font-weight: 700;
-      background: var(--accent);
-      color: #000;
-      border: none;
-      border-radius: 7px;
-      padding: 8px 22px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn-scan:hover  { opacity: .88; }
-    .btn-scan:active { transform: scale(.97); }
-    .btn-scan:disabled { opacity: .35; cursor: not-allowed; }
-
-    .live-badge {
-      font-family: var(--font);
-      font-size: 11px;
-      font-weight: 700;
-      background: var(--red);
-      color: #fff;
-      border-radius: 4px;
-      padding: 3px 9px;
-      animation: blink 1.4s infinite;
-      display: none;
-    }
-    .live-badge.show { display: inline; }
-
-    .scan-meta {
-      font-family: var(--font);
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .scan-meta strong { color: var(--text); }
-
-    /* ── MAIN ── */
-    main { padding: 16px 22px; }
-
-    /* Signal banner */
-    #signal-banner {
-      display: none;
-      font-family: var(--font);
-      font-size: 15px;
-      font-weight: 700;
-      background: linear-gradient(90deg, #3a0010, #1a000a);
-      border: 1px solid var(--red);
-      border-radius: 8px;
-      padding: 11px 18px;
-      margin-bottom: 14px;
-      color: var(--red);
-      letter-spacing: 1px;
-      animation: blink 1s infinite;
-    }
-
-    /* Friday warning */
-    .friday-warn {
-      font-family: var(--font);
-      font-size: 12px;
-      background: #1a1400;
-      border: 1px solid var(--yellow);
-      border-radius: 7px;
-      padding: 8px 16px;
-      margin-bottom: 14px;
-      color: var(--yellow);
-    }
-    .friday-warn.hidden { display: none; }
-
-    /* Info panels row */
-    .panels-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
+    header { background:linear-gradient(135deg,#0d1117 0%,#131a27 100%); border-bottom:2px solid var(--border); padding:12px 22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .logo { font-size:22px; font-weight:700; color:var(--accent); letter-spacing:.5px; display:flex; align-items:center; gap:8px; }
+    .logo span { color:var(--text); }
+    .header-right { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .clock-box { background:#0a0c10; border:1px solid var(--border); border-radius:7px; padding:7px 16px; text-align:center; min-width:180px; }
+    .clock-label { font-size:10px; color:var(--muted); }
+    #clock { font-family:'Courier New',monospace; font-size:18px; font-weight:700; color:var(--accent); letter-spacing:2px; }
+    #market-status { font-size:11px; margin-top:2px; font-weight:600; }
+    .s-open { color:var(--green); } .s-window { color:var(--orange); font-weight:700; animation:blink 1s infinite; } .s-closed { color:var(--muted); }
+    .hdr-btn { font-family:var(--font); font-size:13px; font-weight:600; background:#131620; border:1px solid var(--border); border-radius:7px; padding:8px 16px; color:var(--text); cursor:pointer; transition:background .18s,border-color .18s; }
+    .hdr-btn:hover { background:#1a2035; border-color:var(--accent); }
+    .scan-bar { background:#0d1117; border-bottom:1px solid var(--border); padding:9px 22px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .btn-scan { font-family:var(--font); font-size:14px; font-weight:700; background:var(--accent); color:#000; border:none; border-radius:7px; padding:8px 22px; cursor:pointer; white-space:nowrap; transition:opacity .2s,transform .1s; }
+    .btn-scan:hover { opacity:.88; } .btn-scan:active { transform:scale(.97); } .btn-scan:disabled { opacity:.35; cursor:not-allowed; }
+    .live-badge { font-size:11px; font-weight:700; background:var(--red); color:#fff; border-radius:4px; padding:3px 9px; animation:blink 1.4s infinite; display:none; }
+    .live-badge.show { display:inline; }
+    .scan-meta { font-size:11px; color:var(--muted); }
+    .scan-meta strong { color:var(--text); }
+    .prog-wrap-outer { flex:1; min-width:200px; }
+    #scan-prog-track { width:100%; background:var(--border); border-radius:4px; height:6px; overflow:hidden; }
+    #scan-prog-fill { height:100%; background:var(--accent); border-radius:4px; width:0%; transition:width .3s; }
+    #scan-prog-txt { font-size:11px; color:var(--muted); margin-top:3px; }
+    main { padding:16px 22px; }
+    #signal-banner { display:none; font-size:15px; font-weight:700; background:linear-gradient(90deg,#3a0010,#1a000a); border:1px solid var(--red); border-radius:8px; padding:11px 18px; margin-bottom:14px; color:var(--red); letter-spacing:1px; animation:blink 1s infinite; }
+    .friday-warn { font-size:12px; background:#1a1400; border:1px solid var(--yellow); border-radius:7px; padding:8px 16px; margin-bottom:14px; color:var(--yellow); }
+    .friday-warn.hidden { display:none; }
+    .panels-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
     @media(max-width:720px){ .panels-row{ grid-template-columns:1fr; } }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      overflow: hidden;
-    }
-    .panel-title {
-      font-family: var(--font);
-      font-size: 12px;
-      font-weight: 700;
-      background: #0d1117;
-      border-bottom: 1px solid var(--border);
-      padding: 9px 16px;
-      color: var(--accent);
-      letter-spacing: .4px;
-    }
-    .panel-body { padding: 12px 16px; }
-
-    /* Rules table */
-    .rules-tbl { width: 100%; border-collapse: collapse; }
-    .rules-tbl td {
-      font-family: var(--font);
-      font-size: 12px;
-      padding: 5px 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .rules-tbl td:first-child { color: var(--muted); width: 46%; }
-    .rules-tbl tr:last-child td { border-bottom: none; }
-
-    /* Seasonality */
-    .season-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 7px; }
-    .s-bar { text-align: center; }
-    .s-name { font-family: var(--font); font-size: 10px; color: var(--muted); margin-bottom: 3px; }
-    .s-track {
-      height: 54px;
-      background: #0d1117;
-      border-radius: 4px;
-      display: flex;
-      align-items: flex-end;
-      overflow: hidden;
-    }
-    .s-fill { width: 100%; border-radius: 3px 3px 0 0; }
-    .s-pct { font-family: var(--font); font-size: 10px; font-weight: 700; margin-top: 3px; }
-
-    /* ── FILTER BAR ── */
-    .filter-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-      padding: 10px 14px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .filter-bar label {
-      font-family: var(--font);
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .filter-btn {
-      font-family: var(--font);
-      font-size: 12px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 4px 12px;
-      background: #0d1117;
-      color: var(--text);
-      cursor: pointer;
-      transition: border-color .15s, background .15s;
-    }
-    .filter-btn:hover { background: #1a2035; }
-    .filter-btn.active { background: #0d1f2e; border-color: var(--accent); color: var(--accent); font-weight: 700; }
-
-    .filter-sep { width: 1px; height: 22px; background: var(--border); }
-
-    .col-toggle-btn {
-      font-family: var(--font);
-      font-size: 11px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 4px 10px;
-      background: #0d1117;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .col-toggle-btn:hover { color: var(--text); background: #1a2035; }
-    .col-toggle-btn.active { border-color: var(--accent); color: var(--accent); }
-
-    /* ── TABLE ── */
-    .table-wrap { overflow-x: auto; }
-
-    table#scanner-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      overflow: hidden;
-    }
-
-    th {
-      font-family: var(--font);
-      font-size: 11px;
-      font-weight: 700;
-      background: #0d1117;
-      padding: 9px 13px;
-      text-align: left;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-    }
-    th:hover { color: var(--accent); }
-    th.sorted { color: var(--accent); }
-    .sort-arrow { margin-left: 4px; opacity: .35; }
-    th.sorted .sort-arrow { opacity: 1; }
-
-    td {
-      font-family: var(--font);
-      font-size: 13px;
-      padding: 9px 13px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #13161f; }
-
-    /* Row accent borders */
-    tr.row-triggered td:first-child { border-left: 3px solid var(--trig); }
-    tr.row-close     td:first-child { border-left: 3px solid var(--close-clr); }
-    tr.row-watch     td:first-child { border-left: 3px solid var(--watch-clr); }
-    tr.row-none      td:first-child { border-left: 3px solid transparent; }
-
-    /* Signal labels */
-    .sig-triggered { color: var(--trig); font-weight: 700; font-size: 13px; }
-    .sig-close     { color: var(--close-clr); font-weight: 700; font-size: 13px; }
-    .sig-watch     { color: var(--watch-clr); font-size: 13px; }
-    .sig-none      { color: var(--muted); }
-
-    /* Symbol + name */
-    .sym-cell strong {
-      font-family: var(--font);
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--accent);
-    }
-    .sym-name {
-      font-family: var(--font);
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 1px;
-    }
-
-    /* Progress bar */
-    .prog-wrap {
-      background: #0d1117;
-      border-radius: 4px;
-      height: 9px;
-      width: 130px;
-      overflow: hidden;
-    }
-    .prog-fill { height: 100%; border-radius: 4px; transition: width .5s; }
-    .prog-label {
-      font-family: var(--font);
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    /* Bounce badge */
-    .bounce-badge {
-      font-family: var(--font);
-      font-size: 12px;
-      font-weight: 700;
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-    .b-strong { background: #003318; color: var(--green); }
-    .b-mod    { background: #1a1400; color: var(--yellow); }
-    .b-weak   { background: #1a0008; color: var(--red); }
-    .b-na     { background: #1a2035; color: var(--muted); }
-
-    /* Action */
-    .act-trigger { color: var(--red); font-weight: 700; font-size: 12px; }
-    .act-watch   { color: var(--muted); font-size: 12px; }
-
-    /* Legend */
-    .legend {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-      font-family: var(--font);
-      font-size: 12px;
-    }
-    .legend-item { display: flex; align-items: center; gap: 6px; }
-    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-
-    /* Bounce legend */
-    .bounce-legend {
-      font-family: var(--font);
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
-
-    /* Empty state */
-    #empty-state {
-      font-family: var(--font);
-      text-align: center;
-      padding: 44px;
-      color: var(--muted);
-      display: none;
-    }
-    #empty-state.show { display: block; }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:9px; overflow:hidden; }
+    .panel-title { font-size:12px; font-weight:700; background:#0d1117; border-bottom:1px solid var(--border); padding:9px 16px; color:var(--accent); letter-spacing:.4px; }
+    .panel-body { padding:12px 16px; }
+    .rules-tbl { width:100%; border-collapse:collapse; }
+    .rules-tbl td { font-size:12px; padding:5px 8px; border-bottom:1px solid var(--border); }
+    .rules-tbl td:first-child { color:var(--muted); width:46%; }
+    .rules-tbl tr:last-child td { border-bottom:none; }
+    .season-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+    .s-bar { text-align:center; }
+    .s-name { font-size:10px; color:var(--muted); margin-bottom:3px; }
+    .s-track { height:54px; background:#0d1117; border-radius:4px; display:flex; align-items:flex-end; overflow:hidden; }
+    .s-fill { width:100%; border-radius:3px 3px 0 0; }
+    .s-pct { font-size:10px; font-weight:700; margin-top:3px; }
+    .filter-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; padding:10px 14px; background:var(--panel); border:1px solid var(--border); border-radius:8px; }
+    .filter-bar label { font-size:11px; color:var(--muted); font-weight:600; }
+    .filter-btn { font-size:12px; border:1px solid var(--border); border-radius:5px; padding:4px 12px; background:#0d1117; color:var(--text); cursor:pointer; transition:border-color .15s,background .15s; }
+    .filter-btn:hover { background:#1a2035; }
+    .filter-btn.active { background:#0d1f2e; border-color:var(--accent); color:var(--accent); font-weight:700; }
+    .filter-sep { width:1px; height:22px; background:var(--border); }
+    .col-toggle-btn { font-size:11px; border:1px solid var(--border); border-radius:5px; padding:4px 10px; background:#0d1117; color:var(--muted); cursor:pointer; transition:all .15s; }
+    .col-toggle-btn:hover { color:var(--text); background:#1a2035; }
+    .col-toggle-btn.active { border-color:var(--accent); color:var(--accent); }
+    .legend { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px; font-size:12px; }
+    .legend-item { display:flex; align-items:center; gap:6px; }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .bounce-legend { font-size:11px; color:var(--muted); margin-bottom:14px; }
+    .table-wrap { overflow-x:auto; }
+    table#scanner-table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:9px; overflow:hidden; }
+    th { font-size:11px; font-weight:700; background:#0d1117; padding:9px 13px; text-align:left; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; cursor:pointer; user-select:none; }
+    th:hover { color:var(--accent); } th.sorted { color:var(--accent); }
+    .sort-arrow { margin-left:4px; opacity:.35; } th.sorted .sort-arrow { opacity:1; }
+    td { font-size:13px; padding:9px 13px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    tr:last-child td { border-bottom:none; } tr:hover td { background:#13161f; }
+    tr.row-triggered td:first-child { border-left:3px solid var(--trig); }
+    tr.row-close     td:first-child { border-left:3px solid var(--close-clr); }
+    tr.row-watch     td:first-child { border-left:3px solid var(--watch-clr); }
+    tr.row-none      td:first-child { border-left:3px solid transparent; }
+    .sig-triggered { color:var(--trig); font-weight:700; font-size:13px; }
+    .sig-close     { color:var(--close-clr); font-weight:700; font-size:13px; }
+    .sig-watch     { color:var(--watch-clr); font-size:13px; }
+    .sig-none      { color:var(--muted); }
+    .sym-cell strong { font-size:14px; font-weight:700; color:var(--accent); }
+    .sym-name { font-size:11px; color:var(--muted); margin-top:1px; }
+    .prog-wrap { background:#0d1117; border-radius:4px; height:9px; width:130px; overflow:hidden; }
+    .prog-fill { height:100%; border-radius:4px; transition:width .5s; }
+    .prog-label { font-size:10px; color:var(--muted); margin-top:2px; }
+    .bounce-badge { font-size:12px; font-weight:700; display:inline-block; padding:2px 8px; border-radius:4px; }
+    .b-strong { background:#003318; color:var(--green); }
+    .b-mod    { background:#1a1400; color:var(--yellow); }
+    .b-weak   { background:#1a0008; color:var(--red); }
+    .b-na     { background:#1a2035; color:var(--muted); }
+    .act-trigger { color:var(--red); font-weight:700; font-size:12px; }
+    .act-watch   { color:var(--muted); font-size:12px; }
+    #empty-state { font-size:13px; text-align:center; padding:44px; color:var(--muted); display:none; }
+    #empty-state.show { display:block; }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
   </style>
 </head>
 <body>
-
-<!-- ── FIREWORKS OVERLAY ── -->
 <div id="fw-overlay"></div>
 
-<!-- ── HEADER ── -->
 <header>
   <div class="logo">💲 Post Market <span>Profits</span> Scanner</div>
   <div class="header-right">
@@ -497,25 +138,22 @@
   </div>
 </header>
 
-<!-- ── API BAR ── -->
-<div class="api-bar">
-  <label for="api-key">FINNHUB API KEY:</label>
-  <input type="password" id="api-key" placeholder="Paste your Finnhub API key here…" autocomplete="off" />
+<div class="scan-bar">
   <button class="btn-scan" id="scan-btn" onclick="runScan()">▶ SCAN</button>
   <span class="live-badge" id="live-badge">LIVE</span>
+  <div class="prog-wrap-outer">
+    <div id="scan-prog-track"><div id="scan-prog-fill"></div></div>
+    <div id="scan-prog-txt"></div>
+  </div>
   <span class="scan-meta">Last scan: <strong id="last-scan">—</strong>&nbsp;|&nbsp;Next refresh: <span id="next-refresh">—</span></span>
 </div>
 
-<!-- ── MAIN ── -->
 <main>
-
   <div id="signal-banner">🌑 DARK TICKER SIGNAL DETECTED — TRADE WINDOW 4:00–4:15 PM ET</div>
-
   <div class="friday-warn hidden" id="friday-warn">
     ⚠️ <strong>FRIDAY RULE:</strong> No trades on Fridays due to weekend time decay — unless market drops 5%+ (extreme case only).
   </div>
 
-  <!-- Info panels -->
   <div class="panels-row">
     <div class="panel">
       <div class="panel-title">💲 Post Market Profits — Active Rules</div>
@@ -541,7 +179,6 @@
     </div>
   </div>
 
-  <!-- Legend -->
   <div class="legend">
     <div class="legend-item"><div class="legend-dot" style="background:var(--trig)"></div> Triggered (≥−1%) — trade at 4:00 PM ET</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--close-clr)"></div> Close (75–99% to trigger)</div>
@@ -549,7 +186,6 @@
     <div class="legend-item"><div class="legend-dot" style="background:var(--none-clr)"></div> No Signal</div>
   </div>
 
-  <!-- Filter bar -->
   <div class="filter-bar">
     <label>Filter:</label>
     <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
@@ -566,7 +202,6 @@
     <button class="col-toggle-btn active" data-col="action" onclick="toggleCol('action',this)">Action</button>
   </div>
 
-  <!-- Bounce legend -->
   <div class="bounce-legend">
     📊 Next-Day Bounce Rate (after ≥−1% drop):&nbsp;
     <span class="bounce-badge b-strong">≥70%</span> Strong&nbsp;
@@ -575,7 +210,6 @@
     · 1-year lookback · Finnhub data
   </div>
 
-  <!-- Table -->
   <div class="table-wrap">
     <table id="scanner-table">
       <thead>
@@ -593,13 +227,13 @@
     </table>
   </div>
   <div id="empty-state">No tickers match the current filter.</div>
-
 </main>
 
 <script>
-// ─────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────
+// ── HARDCODED API KEY ──
+const FINNHUB_KEY = 'd87p6phr01qmhakgqmu0d87p6phr01qmhakgqmug';
+
+// ── TICKERS ──
 const TICKERS = [
   {sym:'SPY',  name:'SPDR S&P 500 ETF'},
   {sym:'QQQ',  name:'Invesco Nasdaq-100 ETF'},
@@ -629,7 +263,7 @@ const TICKERS = [
   {sym:'XLI',  name:'Industrial Select SPDR'},
   {sym:'XLRE', name:'Real Estate Select SPDR'},
   {sym:'XLV',  name:'Health Care Select SPDR'},
-  {sym:'XLY',  name:'Consumer Discret. Select SPDR'},
+  {sym:'XLY',  name:'Consumer Discret. SPDR'},
   {sym:'XRT',  name:'SPDR S&P Retail ETF'},
   {sym:'XSP',  name:'iShares Core S&P Small-Cap'},
   {sym:'DBA',  name:'Invesco DB Agriculture'},
@@ -643,66 +277,50 @@ const TICKERS = [
 
 const SEASONALITY = {
   Jan:82, Feb:96.3, Mar:91, Apr:78, May:100, Jun:88,
-  Jul:80, Aug:94,  Sep:86, Oct:95.83, Nov:90, Dec:89
+  Jul:80, Aug:94, Sep:86, Oct:95.83, Nov:90, Dec:89
 };
 
-// ─────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────
-let lastScanData      = [];   // persists between refreshes — prices stay static
-let prevTriggerSyms   = new Set();
+// ── STATE ──
+let lastScanData = [];
+let prevTriggerSyms = new Set();
 let sortCol = 'chg', sortDir = 'asc';
 let activeFilter = 'all';
-let hiddenCols   = new Set();
-let autoTimer    = null;
+let hiddenCols = new Set();
+let autoTimer = null;
 let countdownVal = 0;
 let countdownInt = null;
-let savedApiKey  = '';
 
-// ─────────────────────────────────────────────────
-// CLOCK
-// ─────────────────────────────────────────────────
+// ── CLOCK ──
 function etNow() {
   return new Date(new Date().toLocaleString('en-US', {timeZone:'America/New_York'}));
 }
 function updateClock() {
   const et = etNow();
-  const h  = et.getHours(), m = et.getMinutes(), s = et.getSeconds();
-  const am = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
+  const h = et.getHours(), m = et.getMinutes(), s = et.getSeconds();
+  const am = h >= 12 ? 'PM' : 'AM', h12 = h % 12 || 12;
   document.getElementById('clock').textContent =
-    `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${am}`;
-
-  const ms  = document.getElementById('market-status');
-  const day = et.getDay();
-  const tot = h * 60 + m;
+    String(h12).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+' '+am;
+  const ms = document.getElementById('market-status');
+  const day = et.getDay(), tot = h * 60 + m;
   document.getElementById('friday-warn').classList.toggle('hidden', day !== 5);
-
-  if (day === 0 || day === 6) {
-    ms.textContent = 'WEEKEND'; ms.className = 's-closed';
-  } else if (tot >= 9*60+30 && tot < 16*60) {
-    ms.textContent = '🟢 MARKET OPEN'; ms.className = 's-open';
-  } else if (tot >= 16*60 && tot < 16*60+15) {
-    ms.textContent = '🌑 TRADE WINDOW OPEN!'; ms.className = 's-window';
-  } else {
-    ms.textContent = 'CLOSED'; ms.className = 's-closed';
-  }
+  if (day === 0 || day === 6) { ms.textContent='WEEKEND'; ms.className='s-closed'; }
+  else if (tot >= 9*60+30 && tot < 16*60) { ms.textContent='🟢 MARKET OPEN'; ms.className='s-open'; }
+  else if (tot >= 16*60 && tot < 16*60+15) { ms.textContent='🌑 TRADE WINDOW OPEN!'; ms.className='s-window'; }
+  else { ms.textContent='CLOSED'; ms.className='s-closed'; }
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ─────────────────────────────────────────────────
-// SEASONALITY BARS
-// ─────────────────────────────────────────────────
+// ── SEASONALITY BARS ──
 (function buildSeason() {
   const months = Object.keys(SEASONALITY);
-  const max    = Math.max(...Object.values(SEASONALITY));
+  const max = Math.max(...Object.values(SEASONALITY));
   const curMon = etNow().toLocaleString('en-US',{month:'short'});
   document.getElementById('season-grid').innerHTML = months.map(m => {
-    const pct  = SEASONALITY[m];
-    const h    = Math.round((pct / max) * 54);
-    const col  = pct >= 95 ? '#00c853' : pct >= 88 ? '#00e5ff' : pct >= 80 ? '#ffea00' : '#ff6d00';
-    const cur  = m === curMon ? 'outline:2px solid #fff;outline-offset:2px;' : '';
+    const pct = SEASONALITY[m];
+    const h = Math.round((pct/max)*54);
+    const col = pct>=95?'#00c853':pct>=88?'#00e5ff':pct>=80?'#ffea00':'#ff6d00';
+    const cur = m===curMon?'outline:2px solid #fff;outline-offset:2px;':'';
     return `<div class="s-bar">
       <div class="s-name">${m}</div>
       <div class="s-track"><div class="s-fill" style="height:${h}px;background:${col};${cur}"></div></div>
@@ -711,322 +329,206 @@ updateClock();
   }).join('');
 })();
 
-// ─────────────────────────────────────────────────
-// FIREWORKS  🎆
-// ─────────────────────────────────────────────────
+// ── FIREWORKS ──
 const FW_EMOJIS = ['🎆','🎇','✨','💥','🌟','⭐','💫','🎉','❤️','🔥','🌈','🎊'];
-
 function fireworks(count) {
   count = count || 35;
   const overlay = document.getElementById('fw-overlay');
-  overlay.innerHTML = '';
-  overlay.classList.add('active');
-
-  const cx = window.innerWidth  / 2;
-  const cy = window.innerHeight / 2;
-
+  overlay.innerHTML = ''; overlay.classList.add('active');
+  const cx = window.innerWidth/2, cy = window.innerHeight/2;
   for (let i = 0; i < count; i++) {
-    const el  = document.createElement('div');
+    const el = document.createElement('div');
     el.className = 'fw-particle';
-    const em  = FW_EMOJIS[Math.floor(Math.random() * FW_EMOJIS.length)];
-    const tx  = (Math.random() - .5) * window.innerWidth  * 1.6;
-    const ty  = (Math.random() - .5) * window.innerHeight * 1.4;
-    const sz  = 20 + Math.random() * 36;
-    const dur = 1.1 + Math.random() * .9;
-    const del = Math.random() * .7;
+    const em = FW_EMOJIS[Math.floor(Math.random()*FW_EMOJIS.length)];
+    const tx = (Math.random()-.5)*window.innerWidth*1.6;
+    const ty = (Math.random()-.5)*window.innerHeight*1.4;
+    const sz = 20+Math.random()*36, dur = 1.1+Math.random()*.9, del = Math.random()*.7;
     el.textContent = em;
-    el.style.cssText = `left:${cx}px;top:${cy}px;font-size:${sz}px;` +
-      `--tx:${tx}px;--ty:${ty}px;--dur:${dur}s;animation-delay:${del}s;`;
+    el.style.cssText = `left:${cx}px;top:${cy}px;font-size:${sz}px;--tx:${tx}px;--ty:${ty}px;--dur:${dur}s;animation-delay:${del}s;`;
     overlay.appendChild(el);
   }
-  setTimeout(() => { overlay.classList.remove('active'); overlay.innerHTML = ''; },
-    2800);
+  setTimeout(() => { overlay.classList.remove('active'); overlay.innerHTML=''; }, 2800);
 }
-
-// Public celebrate button
 function celebrate() { fireworks(45); }
 
-// ─────────────────────────────────────────────────
-// FETCH ONE TICKER
-// ─────────────────────────────────────────────────
-async function fetchTicker(sym, key) {
-  const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(key)}`);
-  if (!r.ok) return null;
-  const d = await r.json();
-  if (!d || d.c == null || d.c === 0 || d.pc == null || d.pc === 0) return null;
-
-  const chg      = ((d.c - d.pc) / d.pc) * 100;
-  const progress = Math.min(Math.abs(chg / -1.0) * 100, 105);
-  const signal   = chg <= -1   ? 'triggered'
-                 : chg <= -.75 ? 'close'
-                 : chg <= -.50 ? 'watch'
-                 : 'none';
-
-  const bounce = chg <= -2   ? {label:'≥75%', cls:'b-strong', val:75}
-               : chg <= -1.5 ? {label:'~70%', cls:'b-strong', val:70}
-               : chg <= -1.0 ? {label:'~65%', cls:'b-mod',    val:65}
-               : chg <= -.5  ? {label:'~55%', cls:'b-mod',    val:55}
-               :               {label:'N/A',  cls:'b-na',     val:0};
-
-  const info = TICKERS.find(t => t.sym === sym) || {sym, name:sym};
-  return {
-    symbol: sym, name: info.name,
-    price: d.c, chg, progress, signal, bounce,
-    signalRank: {triggered:0, close:1, watch:2, none:3}[signal]
-  };
+// ── SET PROGRESS ──
+function setProg(txt, pct) {
+  document.getElementById('scan-prog-txt').textContent = txt;
+  document.getElementById('scan-prog-fill').style.width = Math.min(100,Math.max(0,pct))+'%';
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ─────────────────────────────────────────────────
-// RUN FULL SCAN  (manual button)
-// ─────────────────────────────────────────────────
-async function runScan() {
-  const key = document.getElementById('api-key').value.trim();
-  if (!key) { alert('Please enter your Finnhub API key first.'); return; }
-  savedApiKey = key;
-
-  const btn = document.getElementById('scan-btn');
-  btn.disabled = true; btn.textContent = '⏳ Scanning…';
-
+// ── FETCH ONE TICKER ──
+async function fetchTicker(sym) {
   try {
-    const results = await fetchAll(key);
-    processScanResults(results, true);   // true = manual scan → fireworks if signals
-    startAutoRefresh(key);
-  } catch(e) {
-    alert('Scan error: ' + e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = '▶ SCAN';
-  }
+    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${FINNHUB_KEY}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || d.c==null || d.c===0 || d.pc==null || d.pc===0) return null;
+    const chg = ((d.c - d.pc) / d.pc) * 100;
+    const progress = Math.min(Math.abs(chg/-1.0)*100, 105);
+    const signal = chg<=-1?'triggered':chg<=-.75?'close':chg<=-.50?'watch':'none';
+    const bounce = chg<=-2?{label:'≥75%',cls:'b-strong',val:75}
+                 : chg<=-1.5?{label:'~70%',cls:'b-strong',val:70}
+                 : chg<=-1.0?{label:'~65%',cls:'b-mod',val:65}
+                 : chg<=-.5?{label:'~55%',cls:'b-mod',val:55}
+                 : {label:'N/A',cls:'b-na',val:0};
+    const info = TICKERS.find(t=>t.sym===sym)||{sym,name:sym};
+    return { symbol:sym, name:info.name, price:d.c, chg, progress, signal, bounce,
+             signalRank:{triggered:0,close:1,watch:2,none:3}[signal] };
+  } catch(e) { return null; }
 }
 
-// Fetch all tickers in small batches to stay within free-tier rate limits
-async function fetchAll(key) {
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ── FETCH ALL — parallel batches of 10 with stagger ──
+async function fetchAll() {
   const results = [];
-  const syms = TICKERS.map(t => t.sym);
-  for (let i = 0; i < syms.length; i += 8) {
-    const chunk = syms.slice(i, i + 8);
-    const settled = await Promise.allSettled(chunk.map(s => fetchTicker(s, key)));
-    settled.forEach(r => { if (r.status === 'fulfilled' && r.value) results.push(r.value); });
-    if (i + 8 < syms.length) await sleep(300);
-  }
+  const syms = TICKERS.map(t=>t.sym);
+  let done = 0;
+  // Fetch all in parallel with per-request stagger to avoid burst limits
+  const settled = await Promise.allSettled(
+    syms.map((s, i) => sleep(i*120).then(() => fetchTicker(s)))
+  );
+  settled.forEach((r,i) => {
+    if (r.status==='fulfilled' && r.value) {
+      results.push(r.value);
+    }
+    done++;
+    setProg(`Fetching… ${done}/${syms.length}`, Math.round(done/syms.length*100));
+  });
   return results;
 }
 
-// Process results, update display, handle fireworks
+// ── PROCESS RESULTS ──
 function processScanResults(results, isManual) {
-  lastScanData = results;   // ← STATIC until next scan/refresh
-
-  const now = new Date().toLocaleString('en-US', {
-    hour:'2-digit', minute:'2-digit', second:'2-digit',
-    hour12:true, timeZone:'America/New_York'
-  });
-  document.getElementById('last-scan').textContent = now + ' ET';
+  lastScanData = results;
+  const now = new Date().toLocaleString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true,timeZone:'America/New_York'});
+  document.getElementById('last-scan').textContent = now+' ET';
   document.getElementById('live-badge').classList.add('show');
-
-  // Detect NEW triggered tickers
-  const nowTriggered = new Set(results.filter(r => r.signal === 'triggered').map(r => r.symbol));
-  const newlyTriggered = [...nowTriggered].filter(s => !prevTriggerSyms.has(s));
-
-  if (isManual) {
-    // On a manual scan: always fire fireworks if any triggered, otherwise celebrate the scan
-    if (nowTriggered.size > 0) {
-      fireworks(50);
-    } else {
-      fireworks(20);  // scan complete celebration
-    }
-  } else if (newlyTriggered.length > 0) {
-    // Background refresh found a NEW signal — fire fireworks!
-    fireworks(50);
-  }
-
+  const nowTriggered = new Set(results.filter(r=>r.signal==='triggered').map(r=>r.symbol));
+  const newlyTriggered = [...nowTriggered].filter(s=>!prevTriggerSyms.has(s));
+  if (isManual) { fireworks(nowTriggered.size>0?50:20); }
+  else if (newlyTriggered.length>0) { fireworks(50); }
   prevTriggerSyms = nowTriggered;
+  setProg('✅ Scan complete — '+results.length+' tickers loaded', 100);
   renderTable();
 }
 
-// ─────────────────────────────────────────────────
-// AUTO-REFRESH
-// ─────────────────────────────────────────────────
-function startAutoRefresh(key) {
-  if (autoTimer)    clearInterval(autoTimer);
+// ── RUN SCAN ──
+async function runScan() {
+  const btn = document.getElementById('scan-btn');
+  btn.disabled=true; btn.textContent='⏳ Scanning…';
+  setProg('Starting scan…', 0);
+  try {
+    const results = await fetchAll();
+    processScanResults(results, true);
+    startAutoRefresh();
+  } catch(e) { alert('Scan error: '+e.message); }
+  finally { btn.disabled=false; btn.textContent='▶ SCAN'; }
+}
+
+// ── AUTO-REFRESH ──
+function startAutoRefresh() {
+  if (autoTimer) clearInterval(autoTimer);
   if (countdownInt) clearInterval(countdownInt);
-
-  const et = etNow();
-  const tot = et.getHours() * 60 + et.getMinutes();
-  const isMarket = tot >= 9*60+30 && tot < 16*60+15;
+  const et = etNow(), tot = et.getHours()*60+et.getMinutes();
+  const isMarket = tot>=9*60+30 && tot<16*60+15;
   const sec = isMarket ? 30 : 300;
-
   countdownVal = sec;
   updateCountdown();
-  countdownInt = setInterval(() => {
-    countdownVal = Math.max(0, countdownVal - 1);
-    updateCountdown();
-  }, 1000);
-
-  autoTimer = setInterval(async () => {
+  countdownInt = setInterval(()=>{ countdownVal=Math.max(0,countdownVal-1); updateCountdown(); }, 1000);
+  autoTimer = setInterval(async()=>{
     countdownVal = sec;
-    try {
-      const results = await fetchAll(key);
-      processScanResults(results, false);
-    } catch(e) { console.warn('Auto-refresh error:', e.message); }
-  }, sec * 1000);
+    try { const results=await fetchAll(); processScanResults(results,false); } catch(e){}
+  }, sec*1000);
 }
+function updateCountdown() { document.getElementById('next-refresh').textContent=countdownVal+'s'; }
 
-function updateCountdown() {
-  document.getElementById('next-refresh').textContent = countdownVal + 's';
-}
-
-// ─────────────────────────────────────────────────
-// RENDER TABLE  (always reads lastScanData — prices stay STATIC)
-// ─────────────────────────────────────────────────
+// ── RENDER TABLE ──
 function renderTable() {
   let rows = [...lastScanData];
-
-  // Signal filter
-  if (activeFilter !== 'all') rows = rows.filter(r => r.signal === activeFilter);
-
-  // Sort
-  rows.sort((a, b) => {
-    let av, bv;
-    switch(sortCol) {
-      case 'symbol': av = a.symbol;      bv = b.symbol;      break;
-      case 'price':  av = a.price;       bv = b.price;       break;
-      case 'chg':    av = a.chg;         bv = b.chg;         break;
-      case 'signal': av = a.signalRank;  bv = b.signalRank;  break;
-      case 'bounce': av = a.bounce.val;  bv = b.bounce.val;  break;
-      default: return 0;
-    }
-    if (av === bv) return 0;
-    return (sortDir === 'asc') === (av > bv) ? 1 : -1;
+  if (activeFilter!=='all') rows=rows.filter(r=>r.signal===activeFilter);
+  rows.sort((a,b)=>{
+    let av,bv;
+    if (sortCol==='symbol'){av=a.symbol;bv=b.symbol;}
+    else if(sortCol==='price'){av=a.price;bv=b.price;}
+    else if(sortCol==='chg'){av=a.chg;bv=b.chg;}
+    else if(sortCol==='signal'){av=a.signalRank;bv=b.signalRank;}
+    else if(sortCol==='bounce'){av=a.bounce.val;bv=b.bounce.val;}
+    else return 0;
+    if(av===bv)return 0;
+    return(sortDir==='asc')===(av>bv)?1:-1;
   });
-
-  // Signal banner
-  const hasTriggered = lastScanData.some(r => r.signal === 'triggered');
-  document.getElementById('signal-banner').style.display = hasTriggered ? 'block' : 'none';
-
+  const hasTriggered = lastScanData.some(r=>r.signal==='triggered');
+  document.getElementById('signal-banner').style.display = hasTriggered?'block':'none';
   const tbody = document.getElementById('scanner-body');
-  tbody.innerHTML = '';
-
-  if (rows.length === 0) {
-    document.getElementById('empty-state').classList.add('show');
-    return;
-  }
+  tbody.innerHTML='';
+  if(!rows.length){ document.getElementById('empty-state').classList.add('show'); return; }
   document.getElementById('empty-state').classList.remove('show');
-
-  rows.forEach(row => {
-    const pos  = row.chg >= 0;
-    const chgStr  = (pos ? '+' : '') + row.chg.toFixed(2) + '%';
-    const chgStyle = `color:${pos ? 'var(--green)' : 'var(--red)'};font-weight:700;`;
-
-    const sigHtml = {
-      triggered: '<span class="sig-triggered">⚡ TRIGGERED</span>',
-      close:     '<span class="sig-close">🔔 CLOSE</span>',
-      watch:     '<span class="sig-watch">👁 WATCH</span>',
-      none:      '<span class="sig-none">—</span>',
+  rows.forEach(row=>{
+    const pos=row.chg>=0;
+    const chgStr=(pos?'+':'')+row.chg.toFixed(2)+'%';
+    const chgStyle=`color:${pos?'var(--green)':'var(--red)'};font-weight:700;`;
+    const sigHtml={
+      triggered:'<span class="sig-triggered">⚡ TRIGGERED</span>',
+      close:    '<span class="sig-close">🔔 CLOSE</span>',
+      watch:    '<span class="sig-watch">👁 WATCH</span>',
+      none:     '<span class="sig-none">—</span>',
     }[row.signal];
-
-    const progColor = {
-      triggered: 'var(--trig)',
-      close:     'var(--close-clr)',
-      watch:     'var(--watch-clr)',
-      none:      'var(--muted)',
-    }[row.signal];
-
-    const actHtml = row.signal === 'triggered'
-      ? '<span class="act-trigger">🌑 Buy calls at 4:00 PM ET</span>'
-      : row.signal === 'close'
-      ? '<span class="act-watch">⏳ Monitor — approaching trigger</span>'
-      : '<span class="act-watch">No action</span>';
-
-    const tr = document.createElement('tr');
-    tr.className = `row-${row.signal}`;
-    tr.innerHTML = `
-      <td class="sym-cell">
-        <strong>${row.symbol}</strong>
-        <div class="sym-name">${row.name}</div>
-      </td>
+    const progColor={triggered:'var(--trig)',close:'var(--close-clr)',watch:'var(--watch-clr)',none:'var(--muted)'}[row.signal];
+    const actHtml=row.signal==='triggered'
+      ?'<span class="act-trigger">🌑 Buy calls at 4:00 PM ET</span>'
+      :row.signal==='close'
+      ?'<span class="act-watch">⏳ Monitor — approaching trigger</span>'
+      :'<span class="act-watch">No action</span>';
+    const tr=document.createElement('tr');
+    tr.className=`row-${row.signal}`;
+    tr.innerHTML=`
+      <td class="sym-cell"><strong>${row.symbol}</strong><div class="sym-name">${row.name}</div></td>
       <td class="col-price">$${row.price.toFixed(2)}</td>
       <td class="col-chg" style="${chgStyle}">${chgStr}</td>
       <td class="col-prog">
-        <div class="prog-wrap">
-          <div class="prog-fill" style="width:${Math.min(row.progress,100)}%;background:${progColor};"></div>
-        </div>
+        <div class="prog-wrap"><div class="prog-fill" style="width:${Math.min(row.progress,100)}%;background:${progColor};"></div></div>
         <div class="prog-label">${row.progress.toFixed(1)}% toward −1%</div>
       </td>
       <td class="col-signal">${sigHtml}</td>
       <td class="col-bounce"><span class="bounce-badge ${row.bounce.cls}">${row.bounce.label}</span></td>
-      <td class="col-action">${actHtml}</td>
-    `;
+      <td class="col-action">${actHtml}</td>`;
     tbody.appendChild(tr);
   });
-
   applyColVisibility();
 }
 
-// ─────────────────────────────────────────────────
-// SORT
-// ─────────────────────────────────────────────────
-const COL_IDX = {symbol:0, price:1, chg:2, signal:4, bounce:5};
+// ── SORT ──
+const COL_IDX={symbol:0,price:1,chg:2,signal:4,bounce:5};
 function sortTable(col) {
-  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-  else { sortCol = col; sortDir = 'asc'; }
-  document.querySelectorAll('th').forEach((th,i) => {
-    th.classList.remove('sorted');
-    const arr = th.querySelector('.sort-arrow');
-    if (arr) arr.textContent = '↕';
-  });
-  const idx = COL_IDX[col];
-  if (idx !== undefined) {
-    const ths = document.querySelectorAll('#scanner-table th');
-    ths[idx].classList.add('sorted');
-    const arr = ths[idx].querySelector('.sort-arrow');
-    if (arr) arr.textContent = sortDir === 'asc' ? '↑' : '↓';
-  }
+  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir='asc';}
+  document.querySelectorAll('th').forEach(th=>{th.classList.remove('sorted');const a=th.querySelector('.sort-arrow');if(a)a.textContent='↕';});
+  const idx=COL_IDX[col];
+  if(idx!==undefined){const ths=document.querySelectorAll('#scanner-table th');ths[idx].classList.add('sorted');const a=ths[idx].querySelector('.sort-arrow');if(a)a.textContent=sortDir==='asc'?'↑':'↓';}
   renderTable();
 }
 
-// ─────────────────────────────────────────────────
-// FILTER
-// ─────────────────────────────────────────────────
-function setFilter(f, btn) {
-  activeFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTable();
-}
+// ── FILTER ──
+function setFilter(f,btn){activeFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTable();}
 
-// ─────────────────────────────────────────────────
-// COLUMN TOGGLE
-// ─────────────────────────────────────────────────
-function toggleCol(col, btn) {
-  hiddenCols.has(col) ? hiddenCols.delete(col) : hiddenCols.add(col);
-  btn.classList.toggle('active', !hiddenCols.has(col));
-  applyColVisibility();
-}
-function applyColVisibility() {
-  ['price','chg','prog','signal','bounce','action'].forEach(col => {
-    const show = !hiddenCols.has(col);
-    document.querySelectorAll(`.col-${col}`).forEach(el => el.style.display = show ? '' : 'none');
-  });
-}
+// ── COLUMN TOGGLE ──
+function toggleCol(col,btn){hiddenCols.has(col)?hiddenCols.delete(col):hiddenCols.add(col);btn.classList.toggle('active',!hiddenCols.has(col));applyColVisibility();}
+function applyColVisibility(){['price','chg','prog','signal','bounce','action'].forEach(col=>{const show=!hiddenCols.has(col);document.querySelectorAll('.col-'+col).forEach(el=>el.style.display=show?'':'none');});}
 
-// ─────────────────────────────────────────────────
-// CSV EXPORT
-// ─────────────────────────────────────────────────
-function exportCSV() {
-  if (!lastScanData.length) { alert('Run a scan first!'); return; }
-  const hdr = ['Symbol','Name','Price','Change %','Progress %','Signal','Bounce Rate'];
-  const rows = lastScanData.map(r =>
-    [r.symbol, `"${r.name}"`, r.price.toFixed(2), r.chg.toFixed(2),
-     r.progress.toFixed(1), r.signal, r.bounce.label].join(',')
-  );
-  const csv  = [hdr.join(','), ...rows].join('\n');
-  const a    = Object.assign(document.createElement('a'), {
-    href: URL.createObjectURL(new Blob([csv], {type:'text/csv'})),
-    download: `pmp-scan-${Date.now()}.csv`
-  });
+// ── CSV EXPORT ──
+function exportCSV(){
+  if(!lastScanData.length){alert('Run a scan first!');return;}
+  const hdr=['Symbol','Name','Price','Change %','Progress %','Signal','Bounce Rate'];
+  const rows=lastScanData.map(r=>[r.symbol,`"${r.name}"`,r.price.toFixed(2),r.chg.toFixed(2),r.progress.toFixed(1),r.signal,r.bounce.label].join(','));
+  const csv=[hdr.join(','),...rows].join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`pmp-scan-${Date.now()}.csv`});
   a.click();
 }
+
+// ── AUTO-START ON LOAD ──
+window.addEventListener('load', () => { runScan(); });
 </script>
 </body>
 </html>
