@@ -117,6 +117,9 @@
     .act-watch   { color:var(--muted); font-size:12px; }
     #empty-state { font-size:13px; text-align:center; padding:44px; color:var(--muted); display:none; }
     #empty-state.show { display:block; }
+    /* Cache banner */
+    #cache-banner { font-size:12px; color:var(--yellow); background:rgba(255,234,0,.07); border:1px solid rgba(255,234,0,.3); border-radius:7px; padding:6px 16px; margin-bottom:12px; display:none; }
+    #cache-banner.show { display:block; }
     ::-webkit-scrollbar { width:6px; height:6px; }
     ::-webkit-scrollbar-track { background:var(--bg); }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
@@ -139,7 +142,7 @@
 </header>
 
 <div class="scan-bar">
-  <button class="btn-scan" id="scan-btn" onclick="runScan()">▶ SCAN</button>
+  <button class="btn-scan" id="scan-btn" onclick="manualScan()">▶ SCAN</button>
   <span class="live-badge" id="live-badge">LIVE</span>
   <div class="prog-wrap-outer">
     <div id="scan-prog-track"><div id="scan-prog-fill"></div></div>
@@ -153,6 +156,8 @@
   <div class="friday-warn hidden" id="friday-warn">
     ⚠️ <strong>FRIDAY RULE:</strong> No trades on Fridays due to weekend time decay — unless market drops 5%+ (extreme case only).
   </div>
+
+  <div id="cache-banner"></div>
 
   <div class="panels-row">
     <div class="panel">
@@ -289,6 +294,7 @@ let hiddenCols = new Set();
 let autoTimer = null;
 let countdownVal = 0;
 let countdownInt = null;
+let bgScanRunning = false;  // guard: only one background scan at a time
 
 // ── CLOCK ──
 function etNow() {
@@ -351,10 +357,46 @@ function fireworks(count) {
 }
 function celebrate() { fireworks(45); }
 
-// ── SET PROGRESS ──
+// ── PROGRESS BAR (scan-bar only) ──
 function setProg(txt, pct) {
   document.getElementById('scan-prog-txt').textContent = txt;
   document.getElementById('scan-prog-fill').style.width = Math.min(100,Math.max(0,pct))+'%';
+}
+
+// ── CACHE BANNER ──
+function showCacheBanner(scanTime, ts) {
+  const age = Math.round((Date.now()-ts)/60000);
+  const ageStr = age < 60 ? age+'m ago' : Math.round(age/60)+'hr ago';
+  const el = document.getElementById('cache-banner');
+  el.textContent = '💾 Showing cached data from ' + scanTime + ' (' + ageStr + ') — refreshing in background…';
+  el.classList.add('show');
+}
+function hideCacheBanner() {
+  const el = document.getElementById('cache-banner');
+  el.classList.remove('show');
+  el.textContent = '';
+}
+
+// ── PERSIST / RESTORE ──
+const STORE_DATA = 'pmp_scandata_v2';
+const STORE_META = 'pmp_scanmeta_v2';
+
+function saveCache(results, scanTime) {
+  try {
+    localStorage.setItem(STORE_DATA, JSON.stringify(results));
+    localStorage.setItem(STORE_META, JSON.stringify({ts:Date.now(), scanTime}));
+  } catch(e) { console.warn('Cache save failed:', e); }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(STORE_DATA);
+    const meta = JSON.parse(localStorage.getItem(STORE_META) || 'null');
+    if (!raw || !meta) return null;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data) || !data.length) return null;
+    return { data, meta };
+  } catch(e) { return null; }
 }
 
 // ── FETCH ONE TICKER ──
@@ -367,12 +409,12 @@ async function fetchTicker(sym) {
     const chg = ((d.c - d.pc) / d.pc) * 100;
     const progress = Math.min(Math.abs(chg/-1.0)*100, 105);
     const signal = chg<=-1?'triggered':chg<=-.75?'close':chg<=-.50?'watch':'none';
-    const bounce = chg<=-2?{label:'≥75%',cls:'b-strong',val:75}
-                 : chg<=-1.5?{label:'~70%',cls:'b-strong',val:70}
-                 : chg<=-1.0?{label:'~65%',cls:'b-mod',val:65}
-                 : chg<=-.5?{label:'~55%',cls:'b-mod',val:55}
-                 : {label:'N/A',cls:'b-na',val:0};
-    const info = TICKERS.find(t=>t.sym===sym)||{sym,name:sym};
+    const bounce = chg<=-2   ? {label:'≥75%', cls:'b-strong', val:75}
+                 : chg<=-1.5 ? {label:'~70%', cls:'b-strong', val:70}
+                 : chg<=-1.0 ? {label:'~65%', cls:'b-mod',    val:65}
+                 : chg<=-.5  ? {label:'~55%', cls:'b-mod',    val:55}
+                 :             {label:'N/A',   cls:'b-na',     val:0};
+    const info = TICKERS.find(t=>t.sym===sym) || {sym, name:sym};
     return { symbol:sym, name:info.name, price:d.c, chg, progress, signal, bounce,
              signalRank:{triggered:0,close:1,watch:2,none:3}[signal] };
   } catch(e) { return null; }
@@ -380,148 +422,160 @@ async function fetchTicker(sym) {
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-// ── FETCH ALL — parallel batches of 10 with stagger ──
-async function fetchAll() {
+// ── FETCH ALL — staggered parallel ──
+async function fetchAll(onProgress) {
   const results = [];
   const syms = TICKERS.map(t=>t.sym);
   let done = 0;
-  // Fetch all in parallel with per-request stagger to avoid burst limits
   const settled = await Promise.allSettled(
     syms.map((s, i) => sleep(i*120).then(() => fetchTicker(s)))
   );
-  settled.forEach((r,i) => {
-    if (r.status==='fulfilled' && r.value) {
-      results.push(r.value);
-    }
+  settled.forEach(r => {
+    if (r.status==='fulfilled' && r.value) results.push(r.value);
     done++;
-    setProg(`Fetching… ${done}/${syms.length}`, Math.round(done/syms.length*100));
+    if (onProgress) onProgress(done, syms.length);
   });
   return results;
 }
 
-// ── PERSIST / RESTORE ──
-const STORE_DATA = 'pmp_scandata_v1';
-const STORE_META = 'pmp_scanmeta_v1';
-
-function saveCache(results, scanTime) {
-  try {
-    localStorage.setItem(STORE_DATA, JSON.stringify(results));
-    localStorage.setItem(STORE_META, JSON.stringify({ts:Date.now(), scanTime}));
-  } catch(e) {}
-}
-
-function loadCache() {
-  try {
-    const raw = localStorage.getItem(STORE_DATA);
-    const meta = JSON.parse(localStorage.getItem(STORE_META)||'null');
-    if (!raw || !meta) return null;
-    const data = JSON.parse(raw);
-    if (!data || !data.length) return null;
-    return {data, meta};
-  } catch(e) { return null; }
-}
-
-function showCacheBanner(scanTime, ts) {
-  const age = Math.round((Date.now()-ts)/60000);
-  const ageStr = age < 60 ? age+'min ago' : Math.round(age/60)+'hr ago';
-  let el = document.getElementById('cache-banner');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'cache-banner';
-    el.style.cssText = 'font-size:12px;color:var(--yellow);background:rgba(255,234,0,.07);border:1px solid rgba(255,234,0,.3);border-radius:7px;padding:6px 16px;margin-bottom:12px;';
-    document.querySelector('main').prepend(el);
-  }
-  el.textContent = '💾 Cached data from last scan: '+scanTime+' ('+ageStr+'). Refreshing…';
-}
-function hideCacheBanner() { const el=document.getElementById('cache-banner'); if(el) el.remove(); }
-
-// ── PROCESS RESULTS ──
-function processScanResults(results, isManual) {
+// ── APPLY FRESH RESULTS TO STATE & TABLE ──
+function applyResults(results, isManual) {
   lastScanData = results;
-  const now = new Date().toLocaleString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true,timeZone:'America/New_York'});
-  document.getElementById('last-scan').textContent = now+' ET';
+  const now = new Date().toLocaleString('en-US', {
+    hour:'2-digit', minute:'2-digit', second:'2-digit',
+    hour12:true, timeZone:'America/New_York'
+  });
+  document.getElementById('last-scan').textContent = now + ' ET';
   document.getElementById('live-badge').classList.add('show');
+
   const nowTriggered = new Set(results.filter(r=>r.signal==='triggered').map(r=>r.symbol));
   const newlyTriggered = [...nowTriggered].filter(s=>!prevTriggerSyms.has(s));
-  if (isManual) { fireworks(nowTriggered.size>0?50:20); }
-  else if (newlyTriggered.length>0) { fireworks(50); }
+  if (isManual) { fireworks(nowTriggered.size > 0 ? 50 : 20); }
+  else if (newlyTriggered.length > 0) { fireworks(50); }
   prevTriggerSyms = nowTriggered;
-  setProg('✅ Scan complete — '+results.length+' tickers loaded', 100);
-  saveCache(results, now+' ET');
+
+  saveCache(results, now + ' ET');
   hideCacheBanner();
+  setProg('✅ Scan complete — ' + results.length + ' tickers loaded', 100);
   renderTable();
 }
 
-// ── RUN SCAN ──
-async function runScan() {
+// ── MANUAL SCAN (triggered by SCAN button) ──
+async function manualScan() {
   const btn = document.getElementById('scan-btn');
-  btn.disabled=true; btn.textContent='⏳ Scanning…';
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
   setProg('Starting scan…', 0);
+  // NOTE: we do NOT clear lastScanData here — cached rows stay visible throughout
   try {
-    const results = await fetchAll();
-    processScanResults(results, true);
+    const results = await fetchAll((done, total) => {
+      setProg(`Fetching… ${done}/${total}`, Math.round(done/total*100));
+    });
+    applyResults(results, true);
     startAutoRefresh();
-  } catch(e) { alert('Scan error: '+e.message); }
-  finally { btn.disabled=false; btn.textContent='▶ SCAN'; }
+  } catch(e) {
+    setProg('⚠️ Scan error', 0);
+    alert('Scan error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ SCAN';
+  }
 }
 
-// ── AUTO-REFRESH ──
+// ── BACKGROUND SCAN (auto-refresh, silent — never touches the button) ──
+async function bgScan() {
+  if (bgScanRunning) return;
+  bgScanRunning = true;
+  try {
+    const results = await fetchAll((done, total) => {
+      setProg(`Auto-refresh… ${done}/${total}`, Math.round(done/total*100));
+    });
+    applyResults(results, false);
+  } catch(e) {
+    // silent — keep old data on screen
+    setProg('⚠️ Auto-refresh failed — showing cached data', 0);
+  } finally {
+    bgScanRunning = false;
+  }
+}
+
+// ── AUTO-REFRESH SCHEDULER ──
 function startAutoRefresh() {
-  if (autoTimer) clearInterval(autoTimer);
+  if (autoTimer)   clearInterval(autoTimer);
   if (countdownInt) clearInterval(countdownInt);
-  const et = etNow(), tot = et.getHours()*60+et.getMinutes();
-  const isMarket = tot>=9*60+30 && tot<16*60+15;
+
+  const et  = etNow();
+  const tot = et.getHours()*60 + et.getMinutes();
+  const isMarket = (tot >= 9*60+30 && tot < 16*60+15);
   const sec = isMarket ? 30 : 300;
+
   countdownVal = sec;
   updateCountdown();
-  countdownInt = setInterval(()=>{ countdownVal=Math.max(0,countdownVal-1); updateCountdown(); }, 1000);
-  autoTimer = setInterval(async()=>{
+  countdownInt = setInterval(() => {
+    countdownVal = Math.max(0, countdownVal - 1);
+    updateCountdown();
+  }, 1000);
+
+  autoTimer = setInterval(async () => {
     countdownVal = sec;
-    try { const results=await fetchAll(); processScanResults(results,false); } catch(e){}
-  }, sec*1000);
+    await bgScan();
+  }, sec * 1000);
 }
-function updateCountdown() { document.getElementById('next-refresh').textContent=countdownVal+'s'; }
+function updateCountdown() {
+  document.getElementById('next-refresh').textContent = countdownVal + 's';
+}
 
 // ── RENDER TABLE ──
 function renderTable() {
   let rows = [...lastScanData];
-  if (activeFilter!=='all') rows=rows.filter(r=>r.signal===activeFilter);
-  rows.sort((a,b)=>{
-    let av,bv;
-    if (sortCol==='symbol'){av=a.symbol;bv=b.symbol;}
-    else if(sortCol==='price'){av=a.price;bv=b.price;}
-    else if(sortCol==='chg'){av=a.chg;bv=b.chg;}
-    else if(sortCol==='signal'){av=a.signalRank;bv=b.signalRank;}
-    else if(sortCol==='bounce'){av=a.bounce.val;bv=b.bounce.val;}
+  if (activeFilter !== 'all') rows = rows.filter(r=>r.signal===activeFilter);
+  rows.sort((a,b) => {
+    let av, bv;
+    if      (sortCol==='symbol') { av=a.symbol; bv=b.symbol; }
+    else if (sortCol==='price')  { av=a.price;  bv=b.price; }
+    else if (sortCol==='chg')    { av=a.chg;    bv=b.chg; }
+    else if (sortCol==='signal') { av=a.signalRank; bv=b.signalRank; }
+    else if (sortCol==='bounce') { av=a.bounce.val;  bv=b.bounce.val; }
     else return 0;
-    if(av===bv)return 0;
-    return(sortDir==='asc')===(av>bv)?1:-1;
+    if (av===bv) return 0;
+    return (sortDir==='asc') === (av>bv) ? 1 : -1;
   });
+
   const hasTriggered = lastScanData.some(r=>r.signal==='triggered');
-  document.getElementById('signal-banner').style.display = hasTriggered?'block':'none';
+  document.getElementById('signal-banner').style.display = hasTriggered ? 'block' : 'none';
+
   const tbody = document.getElementById('scanner-body');
-  tbody.innerHTML='';
-  if(!rows.length){ document.getElementById('empty-state').classList.add('show'); return; }
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    document.getElementById('empty-state').classList.add('show');
+    return;
+  }
   document.getElementById('empty-state').classList.remove('show');
-  rows.forEach(row=>{
-    const pos=row.chg>=0;
-    const chgStr=(pos?'+':'')+row.chg.toFixed(2)+'%';
-    const chgStyle=`color:${pos?'var(--green)':'var(--red)'};font-weight:700;`;
-    const sigHtml={
-      triggered:'<span class="sig-triggered">⚡ TRIGGERED</span>',
-      close:    '<span class="sig-close">🔔 CLOSE</span>',
-      watch:    '<span class="sig-watch">👁 WATCH</span>',
-      none:     '<span class="sig-none">—</span>',
+
+  rows.forEach(row => {
+    const pos = row.chg >= 0;
+    const chgStr = (pos?'+':'') + row.chg.toFixed(2) + '%';
+    const chgStyle = `color:${pos?'var(--green)':'var(--red)'};font-weight:700;`;
+    const sigHtml = {
+      triggered: '<span class="sig-triggered">⚡ TRIGGERED</span>',
+      close:     '<span class="sig-close">🔔 CLOSE</span>',
+      watch:     '<span class="sig-watch">👁 WATCH</span>',
+      none:      '<span class="sig-none">—</span>',
     }[row.signal];
-    const progColor={triggered:'var(--trig)',close:'var(--close-clr)',watch:'var(--watch-clr)',none:'var(--muted)'}[row.signal];
-    const actHtml=row.signal==='triggered'
-      ?'<span class="act-trigger">🌑 Buy calls at 4:00 PM ET</span>'
-      :row.signal==='close'
-      ?'<span class="act-watch">⏳ Monitor — approaching trigger</span>'
-      :'<span class="act-watch">No action</span>';
-    const tr=document.createElement('tr');
-    tr.className=`row-${row.signal}`;
-    tr.innerHTML=`
+    const progColor = {
+      triggered:'var(--trig)', close:'var(--close-clr)',
+      watch:'var(--watch-clr)', none:'var(--muted)'
+    }[row.signal];
+    const actHtml = row.signal==='triggered'
+      ? '<span class="act-trigger">🌑 Buy calls at 4:00 PM ET</span>'
+      : row.signal==='close'
+      ? '<span class="act-watch">⏳ Monitor — approaching trigger</span>'
+      : '<span class="act-watch">No action</span>';
+
+    const tr = document.createElement('tr');
+    tr.className = `row-${row.signal}`;
+    tr.innerHTML = `
       <td class="sym-cell"><strong>${row.symbol}</strong><div class="sym-name">${row.name}</div></td>
       <td class="col-price">$${row.price.toFixed(2)}</td>
       <td class="col-chg" style="${chgStyle}">${chgStr}</td>
@@ -538,47 +592,85 @@ function renderTable() {
 }
 
 // ── SORT ──
-const COL_IDX={symbol:0,price:1,chg:2,signal:4,bounce:5};
+const COL_IDX = {symbol:0, price:1, chg:2, signal:4, bounce:5};
 function sortTable(col) {
-  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
-  else{sortCol=col;sortDir='asc';}
-  document.querySelectorAll('th').forEach(th=>{th.classList.remove('sorted');const a=th.querySelector('.sort-arrow');if(a)a.textContent='↕';});
-  const idx=COL_IDX[col];
-  if(idx!==undefined){const ths=document.querySelectorAll('#scanner-table th');ths[idx].classList.add('sorted');const a=ths[idx].querySelector('.sort-arrow');if(a)a.textContent=sortDir==='asc'?'↑':'↓';}
+  if (sortCol===col) sortDir = sortDir==='asc' ? 'desc' : 'asc';
+  else { sortCol=col; sortDir='asc'; }
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.remove('sorted');
+    const a = th.querySelector('.sort-arrow');
+    if (a) a.textContent = '↕';
+  });
+  const idx = COL_IDX[col];
+  if (idx !== undefined) {
+    const ths = document.querySelectorAll('#scanner-table th');
+    ths[idx].classList.add('sorted');
+    const a = ths[idx].querySelector('.sort-arrow');
+    if (a) a.textContent = sortDir==='asc' ? '↑' : '↓';
+  }
   renderTable();
 }
 
 // ── FILTER ──
-function setFilter(f,btn){activeFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTable();}
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
 
 // ── COLUMN TOGGLE ──
-function toggleCol(col,btn){hiddenCols.has(col)?hiddenCols.delete(col):hiddenCols.add(col);btn.classList.toggle('active',!hiddenCols.has(col));applyColVisibility();}
-function applyColVisibility(){['price','chg','prog','signal','bounce','action'].forEach(col=>{const show=!hiddenCols.has(col);document.querySelectorAll('.col-'+col).forEach(el=>el.style.display=show?'':'none');});}
+function toggleCol(col, btn) {
+  hiddenCols.has(col) ? hiddenCols.delete(col) : hiddenCols.add(col);
+  btn.classList.toggle('active', !hiddenCols.has(col));
+  applyColVisibility();
+}
+function applyColVisibility() {
+  ['price','chg','prog','signal','bounce','action'].forEach(col => {
+    const show = !hiddenCols.has(col);
+    document.querySelectorAll('.col-'+col).forEach(el => el.style.display = show ? '' : 'none');
+  });
+}
 
 // ── CSV EXPORT ──
-function exportCSV(){
-  if(!lastScanData.length){alert('Run a scan first!');return;}
-  const hdr=['Symbol','Name','Price','Change %','Progress %','Signal','Bounce Rate'];
-  const rows=lastScanData.map(r=>[r.symbol,`"${r.name}"`,r.price.toFixed(2),r.chg.toFixed(2),r.progress.toFixed(1),r.signal,r.bounce.label].join(','));
-  const csv=[hdr.join(','),...rows].join('\n');
-  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`pmp-scan-${Date.now()}.csv`});
+function exportCSV() {
+  if (!lastScanData.length) { alert('Run a scan first!'); return; }
+  const hdr = ['Symbol','Name','Price','Change %','Progress %','Signal','Bounce Rate'];
+  const rows = lastScanData.map(r =>
+    [r.symbol, `"${r.name}"`, r.price.toFixed(2), r.chg.toFixed(2),
+     r.progress.toFixed(1), r.signal, r.bounce.label].join(',')
+  );
+  const csv = [hdr.join(','), ...rows].join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv], {type:'text/csv'})),
+    download: `pmp-scan-${Date.now()}.csv`
+  });
   a.click();
 }
 
-// ── AUTO-START ON LOAD ──
+// ═══════════════════════════════════════════════════════════
+//  AUTO-START ON LOAD
+//  1. Paint cached rows instantly — table is NEVER blank
+//  2. Fire a SILENT background refresh — button stays enabled,
+//     old rows stay visible until fresh data arrives
+// ═══════════════════════════════════════════════════════════
 window.addEventListener('load', () => {
-  // 1. Paint cached data instantly so table is never blank
   const cached = loadCache();
+
   if (cached) {
+    // Step 1 — show cached data immediately
     lastScanData = cached.data;
     document.getElementById('last-scan').textContent = cached.meta.scanTime;
     document.getElementById('live-badge').classList.add('show');
-    setProg('Cached data loaded — refreshing…', 100);
     renderTable();
     showCacheBanner(cached.meta.scanTime, cached.meta.ts);
+    setProg('Cached data loaded — refreshing in background…', 100);
+  } else {
+    setProg('No cached data — starting scan…', 0);
   }
-  // 2. Always fetch fresh in background (saves new cache when done)
-  runScan();
+
+  // Step 2 — background refresh (never wipes the table mid-flight)
+  bgScan().then(() => startAutoRefresh());
 });
 </script>
 </body>
