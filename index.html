@@ -212,7 +212,7 @@
     <span class="bounce-badge b-strong">≥70%</span> Strong&nbsp;
     <span class="bounce-badge b-mod">50–69%</span> Moderate&nbsp;
     <span class="bounce-badge b-weak">&lt;50%</span> Weak&nbsp;
-    · 1-year lookback · Finnhub data
+    · 1-year lookback · Yahoo Finance data (15min delay during market hours)
   </div>
 
   <div class="table-wrap">
@@ -236,7 +236,8 @@
 
 <script>
 // ── HARDCODED API KEY ──
-const FINNHUB_KEY = 'd87p6phr01qmhakgqmu0d87p6phr01qmhakgqmug';
+// No API key needed — Yahoo Finance (free, no account required)
+// Note: ~15min delay during market hours; final close price is always accurate
 
 // ── TICKERS ──
 const TICKERS = [
@@ -399,23 +400,39 @@ function loadCache() {
   } catch(e) { return null; }
 }
 
-// ── FETCH ONE TICKER ──
+// ── FETCH ONE TICKER via Yahoo Finance ──
 async function fetchTicker(sym) {
   try {
-    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${FINNHUB_KEY}`);
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (!d || d.c==null || d.c===0 || d.pc==null || d.pc===0) return null;
-    const chg = ((d.c - d.pc) / d.pc) * 100;
-    const progress = Math.min(Math.abs(chg/-1.0)*100, 105);
-    const signal = chg<=-1?'triggered':chg<=-.75?'close':chg<=-.50?'watch':'none';
-    const bounce = chg<=-2   ? {label:'≥75%', cls:'b-strong', val:75}
-                 : chg<=-1.5 ? {label:'~70%', cls:'b-strong', val:70}
-                 : chg<=-1.0 ? {label:'~65%', cls:'b-mod',    val:65}
-                 : chg<=-.5  ? {label:'~55%', cls:'b-mod',    val:55}
-                 :             {label:'N/A',   cls:'b-na',     val:0};
-    const info = TICKERS.find(t=>t.sym===sym) || {sym, name:sym};
-    return { symbol:sym, name:info.name, price:d.c, chg, progress, signal, bounce,
+    // Try direct Yahoo Finance first; fall back to allorigins proxy if CORS blocked
+    const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d&nocache=${Date.now()}`;
+    let json;
+    try {
+      const r = await fetch(yUrl);
+      if (!r.ok) throw new Error('direct fail');
+      json = await r.json();
+    } catch(e) {
+      // CORS fallback via allorigins
+      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
+      const r2 = await fetch(proxy);
+      if (!r2.ok) return null;
+      const wrapper = await r2.json();
+      json = JSON.parse(wrapper.contents);
+    }
+    const meta = json?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    const price = meta.regularMarketPrice;
+    const prevClose = meta.chartPreviousClose || meta.previousClose;
+    if (!price || !prevClose) return null;
+    const chg = ((price - prevClose) / prevClose) * 100;
+    const progress = Math.min(Math.abs(chg / -1.0) * 100, 105);
+    const signal = chg <= -1 ? 'triggered' : chg <= -.75 ? 'close' : chg <= -.50 ? 'watch' : 'none';
+    const bounce = chg <= -2   ? {label:'≥75%', cls:'b-strong', val:75}
+                 : chg <= -1.5 ? {label:'~70%', cls:'b-strong', val:70}
+                 : chg <= -1.0 ? {label:'~65%', cls:'b-mod',    val:65}
+                 : chg <= -.5  ? {label:'~55%', cls:'b-mod',    val:55}
+                 :               {label:'N/A',   cls:'b-na',     val:0};
+    const info = TICKERS.find(t => t.sym === sym) || {sym, name:sym};
+    return { symbol:sym, name:info.name, price, chg, progress, signal, bounce,
              signalRank:{triggered:0,close:1,watch:2,none:3}[signal] };
   } catch(e) { return null; }
 }
