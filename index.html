@@ -211,7 +211,7 @@
     <span class="bounce-badge b-strong">≥70%</span> Strong&nbsp;
     <span class="bounce-badge b-mod">50–69%</span> Moderate&nbsp;
     <span class="bounce-badge b-weak">&lt;50%</span> Weak&nbsp;
-    · 1-year lookback · via Cloudflare Worker proxy
+    · 1-year lookback · Finnhub real-time · No delay
   </div>
 
   <div class="table-wrap">
@@ -388,26 +388,19 @@ function loadCache() {
   } catch(e) { return null; }
 }
 
-// ── FETCH ONE TICKER via Cloudflare Worker → Yahoo Finance ──
+// ── FETCH ONE TICKER via Finnhub (live, no delay) ──
 async function fetchTicker(sym) {
   try {
-    const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d&nocache=${Date.now()}`;
-    let json;
-    try {
-      const r = await fetch(`${PROXY}?url=${encodeURIComponent(yUrl)}`, {signal:AbortSignal.timeout(10000)});
-      if (!r.ok) throw new Error('proxy fail');
-      json = await r.json();
-    } catch(e) {
-      const yUrl2 = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d&nocache=${Date.now()}`;
-      const r2 = await fetch(`${PROXY}?url=${encodeURIComponent(yUrl2)}`, {signal:AbortSignal.timeout(10000)});
-      if (!r2.ok) return null;
-      json = await r2.json();
-    }
-    const meta = json?.chart?.result?.[0]?.meta;
-    if (!meta) return null;
-    const price = meta.regularMarketPrice;
-    const prevClose = meta.chartPreviousClose || meta.previousClose;
-    if (!price || !prevClose) return null;
+    const FH_KEY = 'd8f20bpr01qub7kfh47gd8f20bpr01qub7kfh480';
+    const r = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${FH_KEY}`,
+      {cache:'no-store', signal:AbortSignal.timeout(7000)}
+    );
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.c || d.c === 0) return null;
+    const price = d.c;
+    const prevClose = d.pc || d.c;
     const chg = ((price - prevClose) / prevClose) * 100;
     const progress = Math.min(Math.abs(chg / -1.0) * 100, 105);
     const signal = chg <= -1 ? 'triggered' : chg <= -.75 ? 'close' : chg <= -.50 ? 'watch' : 'none';
