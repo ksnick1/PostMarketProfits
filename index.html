@@ -117,7 +117,6 @@
     .act-watch   { color:var(--muted); font-size:12px; }
     #empty-state { font-size:13px; text-align:center; padding:44px; color:var(--muted); display:none; }
     #empty-state.show { display:block; }
-    /* Cache banner */
     #cache-banner { font-size:12px; color:var(--yellow); background:rgba(255,234,0,.07); border:1px solid rgba(255,234,0,.3); border-radius:7px; padding:6px 16px; margin-bottom:12px; display:none; }
     #cache-banner.show { display:block; }
     ::-webkit-scrollbar { width:6px; height:6px; }
@@ -212,7 +211,7 @@
     <span class="bounce-badge b-strong">≥70%</span> Strong&nbsp;
     <span class="bounce-badge b-mod">50–69%</span> Moderate&nbsp;
     <span class="bounce-badge b-weak">&lt;50%</span> Weak&nbsp;
-    · 1-year lookback · Yahoo Finance data (15min delay during market hours)
+    · 1-year lookback · via Cloudflare Worker proxy
   </div>
 
   <div class="table-wrap">
@@ -235,9 +234,8 @@
 </main>
 
 <script>
-// ── HARDCODED API KEY ──
-// No API key needed — Yahoo Finance (free, no account required)
-// Note: ~15min delay during market hours; final close price is always accurate
+// ── CLOUDFLARE WORKER PROXY ──
+const PROXY = 'https://stock-proxy.ksnick1.workers.dev';
 
 // ── TICKERS ──
 const TICKERS = [
@@ -286,7 +284,6 @@ const SEASONALITY = {
   Jul:80, Aug:94, Sep:86, Oct:95.83, Nov:90, Dec:89
 };
 
-// ── STATE ──
 let lastScanData = [];
 let prevTriggerSyms = new Set();
 let sortCol = 'chg', sortDir = 'asc';
@@ -295,9 +292,8 @@ let hiddenCols = new Set();
 let autoTimer = null;
 let countdownVal = 0;
 let countdownInt = null;
-let bgScanRunning = false;  // guard: only one background scan at a time
+let bgScanRunning = false;
 
-// ── CLOCK ──
 function etNow() {
   return new Date(new Date().toLocaleString('en-US', {timeZone:'America/New_York'}));
 }
@@ -318,7 +314,6 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// ── SEASONALITY BARS ──
 (function buildSeason() {
   const months = Object.keys(SEASONALITY);
   const max = Math.max(...Object.values(SEASONALITY));
@@ -336,7 +331,6 @@ updateClock();
   }).join('');
 })();
 
-// ── FIREWORKS ──
 const FW_EMOJIS = ['🎆','🎇','✨','💥','🌟','⭐','💫','🎉','❤️','🔥','🌈','🎊'];
 function fireworks(count) {
   count = count || 35;
@@ -358,13 +352,11 @@ function fireworks(count) {
 }
 function celebrate() { fireworks(45); }
 
-// ── PROGRESS BAR (scan-bar only) ──
 function setProg(txt, pct) {
   document.getElementById('scan-prog-txt').textContent = txt;
   document.getElementById('scan-prog-fill').style.width = Math.min(100,Math.max(0,pct))+'%';
 }
 
-// ── CACHE BANNER ──
 function showCacheBanner(scanTime, ts) {
   const age = Math.round((Date.now()-ts)/60000);
   const ageStr = age < 60 ? age+'m ago' : Math.round(age/60)+'hr ago';
@@ -373,12 +365,9 @@ function showCacheBanner(scanTime, ts) {
   el.classList.add('show');
 }
 function hideCacheBanner() {
-  const el = document.getElementById('cache-banner');
-  el.classList.remove('show');
-  el.textContent = '';
+  document.getElementById('cache-banner').classList.remove('show');
 }
 
-// ── PERSIST / RESTORE ──
 const STORE_DATA = 'pmp_scandata_v2';
 const STORE_META = 'pmp_scanmeta_v2';
 
@@ -386,9 +375,8 @@ function saveCache(results, scanTime) {
   try {
     localStorage.setItem(STORE_DATA, JSON.stringify(results));
     localStorage.setItem(STORE_META, JSON.stringify({ts:Date.now(), scanTime}));
-  } catch(e) { console.warn('Cache save failed:', e); }
+  } catch(e) {}
 }
-
 function loadCache() {
   try {
     const raw = localStorage.getItem(STORE_DATA);
@@ -400,23 +388,20 @@ function loadCache() {
   } catch(e) { return null; }
 }
 
-// ── FETCH ONE TICKER via Yahoo Finance ──
+// ── FETCH ONE TICKER via Cloudflare Worker → Yahoo Finance ──
 async function fetchTicker(sym) {
   try {
-    // Try direct Yahoo Finance first; fall back to allorigins proxy if CORS blocked
     const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d&nocache=${Date.now()}`;
     let json;
     try {
-      const r = await fetch(yUrl);
-      if (!r.ok) throw new Error('direct fail');
+      const r = await fetch(`${PROXY}?url=${encodeURIComponent(yUrl)}`, {signal:AbortSignal.timeout(10000)});
+      if (!r.ok) throw new Error('proxy fail');
       json = await r.json();
     } catch(e) {
-      // CORS fallback via allorigins
-      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`;
-      const r2 = await fetch(proxy);
+      const yUrl2 = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=2d&nocache=${Date.now()}`;
+      const r2 = await fetch(`${PROXY}?url=${encodeURIComponent(yUrl2)}`, {signal:AbortSignal.timeout(10000)});
       if (!r2.ok) return null;
-      const wrapper = await r2.json();
-      json = JSON.parse(wrapper.contents);
+      json = await r2.json();
     }
     const meta = json?.chart?.result?.[0]?.meta;
     if (!meta) return null;
@@ -439,7 +424,6 @@ async function fetchTicker(sym) {
 
 function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-// ── FETCH ALL — staggered parallel ──
 async function fetchAll(onProgress) {
   const results = [];
   const syms = TICKERS.map(t=>t.sym);
@@ -455,7 +439,6 @@ async function fetchAll(onProgress) {
   return results;
 }
 
-// ── APPLY FRESH RESULTS TO STATE & TABLE ──
 function applyResults(results, isManual) {
   lastScanData = results;
   const now = new Date().toLocaleString('en-US', {
@@ -464,26 +447,21 @@ function applyResults(results, isManual) {
   });
   document.getElementById('last-scan').textContent = now + ' ET';
   document.getElementById('live-badge').classList.add('show');
-
   const nowTriggered = new Set(results.filter(r=>r.signal==='triggered').map(r=>r.symbol));
   const newlyTriggered = [...nowTriggered].filter(s=>!prevTriggerSyms.has(s));
   if (isManual) { fireworks(nowTriggered.size > 0 ? 50 : 20); }
   else if (newlyTriggered.length > 0) { fireworks(50); }
   prevTriggerSyms = nowTriggered;
-
   saveCache(results, now + ' ET');
   hideCacheBanner();
   setProg('✅ Scan complete — ' + results.length + ' tickers loaded', 100);
   renderTable();
 }
 
-// ── MANUAL SCAN (triggered by SCAN button) ──
 async function manualScan() {
   const btn = document.getElementById('scan-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Scanning…';
+  btn.disabled = true; btn.textContent = '⏳ Scanning…';
   setProg('Starting scan…', 0);
-  // NOTE: we do NOT clear lastScanData here — cached rows stay visible throughout
   try {
     const results = await fetchAll((done, total) => {
       setProg(`Fetching… ${done}/${total}`, Math.round(done/total*100));
@@ -492,14 +470,11 @@ async function manualScan() {
     startAutoRefresh();
   } catch(e) {
     setProg('⚠️ Scan error', 0);
-    alert('Scan error: ' + e.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = '▶ SCAN';
+    btn.disabled = false; btn.textContent = '▶ SCAN';
   }
 }
 
-// ── BACKGROUND SCAN (auto-refresh, silent — never touches the button) ──
 async function bgScan() {
   if (bgScanRunning) return;
   bgScanRunning = true;
@@ -509,40 +484,27 @@ async function bgScan() {
     });
     applyResults(results, false);
   } catch(e) {
-    // silent — keep old data on screen
     setProg('⚠️ Auto-refresh failed — showing cached data', 0);
   } finally {
     bgScanRunning = false;
   }
 }
 
-// ── AUTO-REFRESH SCHEDULER ──
 function startAutoRefresh() {
-  if (autoTimer)   clearInterval(autoTimer);
+  if (autoTimer) clearInterval(autoTimer);
   if (countdownInt) clearInterval(countdownInt);
-
-  const et  = etNow();
-  const tot = et.getHours()*60 + et.getMinutes();
+  const et = etNow(), tot = et.getHours()*60 + et.getMinutes();
   const isMarket = (tot >= 9*60+30 && tot < 16*60+15);
   const sec = isMarket ? 30 : 300;
-
   countdownVal = sec;
   updateCountdown();
-  countdownInt = setInterval(() => {
-    countdownVal = Math.max(0, countdownVal - 1);
-    updateCountdown();
-  }, 1000);
-
-  autoTimer = setInterval(async () => {
-    countdownVal = sec;
-    await bgScan();
-  }, sec * 1000);
+  countdownInt = setInterval(() => { countdownVal = Math.max(0, countdownVal-1); updateCountdown(); }, 1000);
+  autoTimer = setInterval(async () => { countdownVal = sec; await bgScan(); }, sec * 1000);
 }
 function updateCountdown() {
   document.getElementById('next-refresh').textContent = countdownVal + 's';
 }
 
-// ── RENDER TABLE ──
 function renderTable() {
   let rows = [...lastScanData];
   if (activeFilter !== 'all') rows = rows.filter(r=>r.signal===activeFilter);
@@ -557,19 +519,12 @@ function renderTable() {
     if (av===bv) return 0;
     return (sortDir==='asc') === (av>bv) ? 1 : -1;
   });
-
   const hasTriggered = lastScanData.some(r=>r.signal==='triggered');
   document.getElementById('signal-banner').style.display = hasTriggered ? 'block' : 'none';
-
   const tbody = document.getElementById('scanner-body');
   tbody.innerHTML = '';
-
-  if (!rows.length) {
-    document.getElementById('empty-state').classList.add('show');
-    return;
-  }
+  if (!rows.length) { document.getElementById('empty-state').classList.add('show'); return; }
   document.getElementById('empty-state').classList.remove('show');
-
   rows.forEach(row => {
     const pos = row.chg >= 0;
     const chgStr = (pos?'+':'') + row.chg.toFixed(2) + '%';
@@ -580,16 +535,12 @@ function renderTable() {
       watch:     '<span class="sig-watch">👁 WATCH</span>',
       none:      '<span class="sig-none">—</span>',
     }[row.signal];
-    const progColor = {
-      triggered:'var(--trig)', close:'var(--close-clr)',
-      watch:'var(--watch-clr)', none:'var(--muted)'
-    }[row.signal];
+    const progColor = {triggered:'var(--trig)',close:'var(--close-clr)',watch:'var(--watch-clr)',none:'var(--muted)'}[row.signal];
     const actHtml = row.signal==='triggered'
       ? '<span class="act-trigger">🌑 Buy calls at 4:00 PM ET</span>'
       : row.signal==='close'
       ? '<span class="act-watch">⏳ Monitor — approaching trigger</span>'
       : '<span class="act-watch">No action</span>';
-
     const tr = document.createElement('tr');
     tr.className = `row-${row.signal}`;
     tr.innerHTML = `
@@ -608,27 +559,16 @@ function renderTable() {
   applyColVisibility();
 }
 
-// ── SORT ──
 const COL_IDX = {symbol:0, price:1, chg:2, signal:4, bounce:5};
 function sortTable(col) {
   if (sortCol===col) sortDir = sortDir==='asc' ? 'desc' : 'asc';
   else { sortCol=col; sortDir='asc'; }
-  document.querySelectorAll('th').forEach(th => {
-    th.classList.remove('sorted');
-    const a = th.querySelector('.sort-arrow');
-    if (a) a.textContent = '↕';
-  });
+  document.querySelectorAll('th').forEach(th => { th.classList.remove('sorted'); const a=th.querySelector('.sort-arrow'); if(a)a.textContent='↕'; });
   const idx = COL_IDX[col];
-  if (idx !== undefined) {
-    const ths = document.querySelectorAll('#scanner-table th');
-    ths[idx].classList.add('sorted');
-    const a = ths[idx].querySelector('.sort-arrow');
-    if (a) a.textContent = sortDir==='asc' ? '↑' : '↓';
-  }
+  if (idx !== undefined) { const ths=document.querySelectorAll('#scanner-table th'); ths[idx].classList.add('sorted'); const a=ths[idx].querySelector('.sort-arrow'); if(a)a.textContent=sortDir==='asc'?'↑':'↓'; }
   renderTable();
 }
 
-// ── FILTER ──
 function setFilter(f, btn) {
   activeFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
@@ -636,7 +576,6 @@ function setFilter(f, btn) {
   renderTable();
 }
 
-// ── COLUMN TOGGLE ──
 function toggleCol(col, btn) {
   hiddenCols.has(col) ? hiddenCols.delete(col) : hiddenCols.add(col);
   btn.classList.toggle('active', !hiddenCols.has(col));
@@ -649,7 +588,6 @@ function applyColVisibility() {
   });
 }
 
-// ── CSV EXPORT ──
 function exportCSV() {
   if (!lastScanData.length) { alert('Run a scan first!'); return; }
   const hdr = ['Symbol','Name','Price','Change %','Progress %','Signal','Bounce Rate'];
@@ -665,17 +603,9 @@ function exportCSV() {
   a.click();
 }
 
-// ═══════════════════════════════════════════════════════════
-//  AUTO-START ON LOAD
-//  1. Paint cached rows instantly — table is NEVER blank
-//  2. Fire a SILENT background refresh — button stays enabled,
-//     old rows stay visible until fresh data arrives
-// ═══════════════════════════════════════════════════════════
 window.addEventListener('load', () => {
   const cached = loadCache();
-
   if (cached) {
-    // Step 1 — show cached data immediately
     lastScanData = cached.data;
     document.getElementById('last-scan').textContent = cached.meta.scanTime;
     document.getElementById('live-badge').classList.add('show');
@@ -685,8 +615,6 @@ window.addEventListener('load', () => {
   } else {
     setProg('No cached data — starting scan…', 0);
   }
-
-  // Step 2 — background refresh (never wipes the table mid-flight)
   bgScan().then(() => startAutoRefresh());
 });
 </script>
