@@ -143,6 +143,7 @@
 <div class="scan-bar">
   <button class="btn-scan" id="scan-btn" onclick="manualScan()">▶ SCAN</button>
   <span class="live-badge" id="live-badge">LIVE</span>
+  <span id="loaded-count" style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--font);">✅ <span id="loaded-num">0</span>/<span id="loaded-total">38</span> loaded</span>
   <div class="prog-wrap-outer">
     <div id="scan-prog-track"><div id="scan-prog-fill"></div></div>
     <div id="scan-prog-txt"></div>
@@ -448,6 +449,8 @@ function applyResults(results, isManual) {
   saveCache(results, now + ' ET');
   hideCacheBanner();
   setProg('✅ Scan complete — ' + results.length + ' tickers loaded', 100);
+  document.getElementById('loaded-num').textContent=results.length;
+  document.getElementById('loaded-total').textContent=TICKERS.length;
   renderTable();
 }
 
@@ -458,6 +461,8 @@ async function manualScan() {
   try {
     const results = await fetchAll((done, total) => {
       setProg(`Fetching… ${done}/${total}`, Math.round(done/total*100));
+      document.getElementById('loaded-num').textContent=done;
+      document.getElementById('loaded-total').textContent=total;
     });
     applyResults(results, true);
     startAutoRefresh();
