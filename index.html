@@ -123,6 +123,7 @@
     ::-webkit-scrollbar-track { background:var(--bg); }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
   #cnt-all { background:rgba(255,255,255,0.15); border-radius:10px; padding:1px 6px; font-size:11px; margin-left:3px; }
+.del-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:1px 4px;margin-left:4px;border-radius:3px;opacity:0.5;vertical-align:middle;}.del-btn:hover{color:#ff1744;opacity:1;background:rgba(255,23,68,0.1);}
 </style>
 </head>
 <body>
@@ -192,6 +193,16 @@
     <div class="legend-item"><div class="legend-dot" style="background:var(--none-clr)"></div> No Signal</div>
   </div>
 
+  <div class="search-bar" style="display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid var(--border);background:#0d1117;">
+    <input id="ticker-search" type="text" placeholder="Search or add ticker…" 
+      style="background:#1a1f2e;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:13px;font-family:var(--font);width:180px;outline:none;"
+      oninput="onSearchInput()" onkeydown="if(event.key==='Enter')confirmAddTicker()"/>
+    <button id="btn-add" onclick="confirmAddTicker()" 
+      style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;display:none;">+ Add</button>
+    <button onclick="clearSearch()" 
+      style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">✕ Clear</button>
+    <span id="search-status" style="font-size:12px;color:var(--muted);"></span>
+  </div>
   <div class="filter-bar">
     <label>Filter:</label>
     <button class="filter-btn active" onclick="setFilter('all',this)">All <span id="cnt-all">0</span></button>
@@ -286,6 +297,10 @@ const SEASONALITY = {
   Jul:80, Aug:94, Sep:86, Oct:95.83, Nov:90, Dec:89
 };
 
+let CUSTOM_TICKERS = [];
+try { CUSTOM_TICKERS = JSON.parse(localStorage.getItem('pmp_custom') || '[]'); } catch(e) {}
+function saveCustom() { try { localStorage.setItem('pmp_custom', JSON.stringify(CUSTOM_TICKERS)); } catch(e) {} }
+function getAllTickers() { return [...TICKERS, ...CUSTOM_TICKERS]; }
 let lastScanData = [];
 let prevTriggerSyms = new Set();
 let sortCol = 'chg', sortDir = 'asc';
@@ -412,7 +427,7 @@ async function fetchTicker(sym) {
                  : chg <= -1.0 ? {label:'~65%', cls:'b-mod',    val:65}
                  : chg <= -.5  ? {label:'~55%', cls:'b-mod',    val:55}
                  :               {label:'N/A',   cls:'b-na',     val:0};
-    const info = TICKERS.find(t => t.sym === sym) || {sym, name:sym};
+    const info = getAllTickers().find(t => t.sym === sym) || {sym, name:sym};
     return { symbol:sym, name:info.name, price, chg, progress, signal, bounce,
              signalRank:{triggered:0,close:1,watch:2,none:3}[signal] };
   } catch(e) { return null; }
@@ -422,15 +437,17 @@ function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
 async function fetchAll(onProgress) {
   const results = [];
-  const syms = TICKERS.map(t=>t.sym);
+  const syms = getAllTickers().map(t=>t.sym);
   let done = 0;
-  for (let i = 0; i < syms.length; i++) {
-    const result = await fetchTicker(syms[i]);
-    if (result) results.push(result);
-    done++;
-    if (onProgress) onProgress(done, syms.length);
-    if (i < syms.length - 1) await sleep(1100);
-  }
+  // Fire all in parallel with 1050ms stagger = ~57 calls/min, safe for Finnhub free tier
+  await Promise.allSettled(
+    syms.map((s, i) => sleep(i * 1050).then(async () => {
+      const result = await fetchTicker(s);
+      if (result) results.push(result);
+      done++;
+      if (onProgress) onProgress(done, syms.length);
+    }))
+  );
   return results;
 }
 
@@ -451,7 +468,7 @@ function applyResults(results, isManual) {
   hideCacheBanner();
   setProg('✅ Scan complete — ' + results.length + ' tickers loaded', 100);
   document.getElementById('loaded-num').textContent=results.length;
-  document.getElementById('loaded-total').textContent=TICKERS.length;
+  document.getElementById('loaded-total').textContent=getAllTickers().length;
   renderTable();
 }
 
@@ -504,13 +521,59 @@ function updateCountdown() {
   document.getElementById('next-refresh').textContent = countdownVal + 's';
 }
 
+
+// ── SEARCH + ADD + DELETE ──
+function onSearchInput() {
+  const val = document.getElementById('ticker-search').value.trim().toUpperCase().replace(/[^A-Z0-9\-]/g,'');
+  const addBtn = document.getElementById('btn-add');
+  const status = document.getElementById('search-status');
+  if (!val) { addBtn.style.display='none'; status.textContent=''; renderTable(); return; }
+  const exists = getAllTickers().find(t => t.sym === val);
+  if (exists) {
+    addBtn.style.display='none';
+    status.textContent = val + ' is already in the list';
+  } else {
+    addBtn.style.display='';
+    status.textContent = val + ' — not in list. Press Add to include.';
+  }
+  renderTable();
+}
+function clearSearch() {
+  document.getElementById('ticker-search').value = '';
+  document.getElementById('btn-add').style.display = 'none';
+  document.getElementById('search-status').textContent = '';
+  renderTable();
+}
+async function confirmAddTicker() {
+  const val = document.getElementById('ticker-search').value.trim().toUpperCase().replace(/[^A-Z0-9\-]/g,'');
+  if (!val) return;
+  if (getAllTickers().find(t => t.sym === val)) return;
+  const status = document.getElementById('search-status');
+  status.textContent = 'Fetching ' + val + '…';
+  const result = await fetchTicker(val);
+  if (!result) { status.textContent = '⚠️ No data found for ' + val + '. Check symbol.'; return; }
+  CUSTOM_TICKERS.push({sym: val, name: val});
+  saveCustom();
+  lastScanData.push(result);
+  status.textContent = '✅ ' + val + ' added!';
+  document.getElementById('btn-add').style.display = 'none';
+  document.getElementById('ticker-search').value = '';
+  renderTable();
+}
+function deleteTicker(sym) {
+  const isCustom = CUSTOM_TICKERS.find(t => t.sym === sym);
+  if (isCustom) { CUSTOM_TICKERS = CUSTOM_TICKERS.filter(t => t.sym !== sym); saveCustom(); }
+  lastScanData = lastScanData.filter(r => r.symbol !== sym);
+  renderTable();
+}
+
 function renderTable() {
   const total = lastScanData.length;
   document.getElementById('cnt-all').textContent = total;
   const lnEl = document.getElementById('loaded-num');
   const ltEl = document.getElementById('loaded-total');
   if (lnEl) lnEl.textContent = total;
-  if (ltEl) ltEl.textContent = TICKERS.length;
+  if (ltEl) ltEl.textContent = getAllTickers().length;
   let rows = [...lastScanData];
   if (activeFilter !== 'all') rows = rows.filter(r=>r.signal===activeFilter);
   rows.sort((a,b) => {
@@ -549,7 +612,7 @@ function renderTable() {
     const tr = document.createElement('tr');
     tr.className = `row-${row.signal}`;
     tr.innerHTML = `
-      <td class="sym-cell"><strong>${row.symbol}</strong><div class="sym-name">${row.name}</div></td>
+      <td class="sym-cell"><strong>${row.symbol}</strong><div class="sym-name">${row.name}</div><button class="del-btn" onclick="deleteTicker('${row.symbol}')" title="Remove">✕</button></td>
       <td class="col-price">$${row.price.toFixed(2)}</td>
       <td class="col-chg" style="${chgStyle}">${chgStr}</td>
       <td class="col-prog">
