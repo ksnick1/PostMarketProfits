@@ -122,7 +122,8 @@
     ::-webkit-scrollbar { width:6px; height:6px; }
     ::-webkit-scrollbar-track { background:var(--bg); }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-  </style>
+  #cnt-all { background:rgba(255,255,255,0.15); border-radius:10px; padding:1px 6px; font-size:11px; margin-left:3px; }
+</style>
 </head>
 <body>
 <div id="fw-overlay"></div>
@@ -193,7 +194,7 @@
 
   <div class="filter-bar">
     <label>Filter:</label>
-    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn active" onclick="setFilter('all',this)">All <span id="cnt-all">0</span></button>
     <button class="filter-btn" onclick="setFilter('triggered',this)">🔴 Triggered</button>
     <button class="filter-btn" onclick="setFilter('close',this)">🟠 Close</button>
     <button class="filter-btn" onclick="setFilter('watch',this)">🟡 Watch</button>
@@ -399,8 +400,9 @@ async function fetchTicker(sym) {
     );
     if (!r.ok) return null;
     const d = await r.json();
-    if (!d || !d.c || d.c === 0) return null;
-    const price = d.c;
+    if (!d) return null;
+    const price = (d.c && d.c !== 0) ? d.c : d.pc;
+    if (!price || price === 0) return null;
     const prevClose = d.pc || d.c;
     const chg = ((price - prevClose) / prevClose) * 100;
     const progress = Math.min(Math.abs(chg / -1.0) * 100, 105);
@@ -422,14 +424,13 @@ async function fetchAll(onProgress) {
   const results = [];
   const syms = TICKERS.map(t=>t.sym);
   let done = 0;
-  const settled = await Promise.allSettled(
-    syms.map((s, i) => sleep(i*120).then(() => fetchTicker(s)))
-  );
-  settled.forEach(r => {
-    if (r.status==='fulfilled' && r.value) results.push(r.value);
+  for (let i = 0; i < syms.length; i++) {
+    const result = await fetchTicker(syms[i]);
+    if (result) results.push(result);
     done++;
     if (onProgress) onProgress(done, syms.length);
-  });
+    if (i < syms.length - 1) await sleep(1100);
+  }
   return results;
 }
 
@@ -504,6 +505,12 @@ function updateCountdown() {
 }
 
 function renderTable() {
+  const total = lastScanData.length;
+  document.getElementById('cnt-all').textContent = total;
+  const lnEl = document.getElementById('loaded-num');
+  const ltEl = document.getElementById('loaded-total');
+  if (lnEl) lnEl.textContent = total;
+  if (ltEl) ltEl.textContent = TICKERS.length;
   let rows = [...lastScanData];
   if (activeFilter !== 'all') rows = rows.filter(r=>r.signal===activeFilter);
   rows.sort((a,b) => {
